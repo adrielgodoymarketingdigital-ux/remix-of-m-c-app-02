@@ -97,6 +97,12 @@ const servicos: Traducao<typeof servicosPtBR> = {
     versaoDescricao: "Se usa en el modelo Estándar y donde el Personalizado no aplica.",
     versaoTech: "Tech",
   },
+  whatsappOS: {
+    finalizado: {
+      titulo: "Servicio finalizado: avise al cliente",
+      descricao: "El mensaje se abre listo en WhatsApp; solo toque enviar. OS",
+    },
+  },
 };
 
 export default servicos;

@@ -105,6 +105,14 @@ const servicos = {
     versaoDescricao: "Usada no modelo Padrão e onde o Personalizado não se aplica.",
     versaoTech: "Tech",
   },
+  // Diálogo de WhatsApp aberto sozinho ao mudar UMA OS para "Serviço Finalizado"
+  // (DialogEnviarWhatsApp com contexto="finalizado"). O número da OS vem logo depois da descrição.
+  whatsappOS: {
+    finalizado: {
+      titulo: "Serviço finalizado: avise o cliente",
+      descricao: "A mensagem abre no WhatsApp pronta; é só tocar em enviar. OS",
+    },
+  },
 } as const;
 
 export default servicos;

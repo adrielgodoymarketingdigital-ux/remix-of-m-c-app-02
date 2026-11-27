@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,8 @@ interface DialogEnviarWhatsAppProps {
   onOpenChange: (open: boolean) => void;
   ordem: OrdemServico | null;
   loja?: ConfiguracaoLoja;
+  /** "finalizado": aberto sozinho ao finalizar a OS; só troca título e descrição. Sem ele, igual a antes. */
+  contexto?: "finalizado";
 }
 
 const MENSAGEM_FALLBACK = `Olá{{cliente}}! 👋
@@ -77,7 +80,9 @@ export const DialogEnviarWhatsApp = ({
   onOpenChange,
   ordem,
   loja,
+  contexto,
 }: DialogEnviarWhatsAppProps) => {
+  const { t } = useTranslation("servicos");
   const [telefone, setTelefone] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [gerando, setGerando] = useState(false);
@@ -380,7 +385,9 @@ export const DialogEnviarWhatsApp = ({
       <DialogContent
         className="!inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-[calc(100vw-1rem)] !h-[92dvh] !max-w-lg !rounded-2xl sm:!w-[calc(100vw-2rem)] sm:!h-auto sm:!max-h-[90dvh] sm:!max-w-lg sm:!rounded-2xl p-0 gap-0 overflow-hidden flex flex-col bg-background [&>.absolute.right-4.top-4]:hidden"
       >
-        <DialogTitle className="sr-only">Enviar OS via WhatsApp</DialogTitle>
+        <DialogTitle className="sr-only">
+          {contexto === "finalizado" ? t("whatsappOS.finalizado.titulo") : "Enviar OS via WhatsApp"}
+        </DialogTitle>
 
         {/* Alça de arrastar */}
         <div className="flex justify-center pt-2.5 pb-1 shrink-0">
@@ -393,10 +400,21 @@ export const DialogEnviarWhatsApp = ({
             <FaWhatsapp className="h-5 w-5 text-[#25D366]" />
           </div>
           <div className="min-w-0 flex-1 pr-8">
-            <h2 className="text-base font-bold leading-tight">Enviar OS via WhatsApp</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Mande só a mensagem ou anexe o PDF da OS <span className="font-semibold text-foreground">#{ordem.numero_os}</span>
-            </p>
+            {contexto === "finalizado" ? (
+              <>
+                <h2 className="text-base font-bold leading-tight">{t("whatsappOS.finalizado.titulo")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("whatsappOS.finalizado.descricao")} <span className="font-semibold text-foreground">#{ordem.numero_os}</span>
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-base font-bold leading-tight">Enviar OS via WhatsApp</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Mande só a mensagem ou anexe o PDF da OS <span className="font-semibold text-foreground">#{ordem.numero_os}</span>
+                </p>
+              </>
+            )}
           </div>
           <button
             type="button"
