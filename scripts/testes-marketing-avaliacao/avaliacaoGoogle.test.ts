@@ -121,7 +121,7 @@ Deno.test("caracteres especiais ($&, $1) no nome da loja não quebram a troca", 
 });
 
 // ── deveOferecerAvaliacaoAoEntregar ─────────────────────────────────────────
-const base = { novoStatus: "entregue", statusAnterior: "finalizado", emLote: false, mudou: true, linkConfigurado: true, ativo: true };
+const base = { novoStatus: "entregue", statusAnterior: "finalizado", emLote: false, mudou: true, linkConfigurado: true, ativo: true, planoLibera: true };
 
 Deno.test("entregue com tudo certo: oferece", () => {
   assertEquals(deveOferecerAvaliacaoAoEntregar(base), true);
@@ -135,6 +135,11 @@ Deno.test("cada condição falsa derruba", () => {
   assertEquals(deveOferecerAvaliacaoAoEntregar({ ...base, mudou: false }), false);
   assertEquals(deveOferecerAvaliacaoAoEntregar({ ...base, linkConfigurado: false }), false);
   assertEquals(deveOferecerAvaliacaoAoEntregar({ ...base, ativo: false }), false);
+});
+
+Deno.test("plano sem o módulo marketing (abaixo do Profissional) derruba, mesmo com link salvo e ligado", () => {
+  assertEquals(deveOferecerAvaliacaoAoEntregar({ ...base, planoLibera: false }), false);
+  assertEquals(deveOferecerAvaliacaoAoEntregar({ ...base, planoLibera: false, linkConfigurado: true, ativo: true }), false);
 });
 
 // ── lerConfigAvaliacaoGoogle ────────────────────────────────────────────────

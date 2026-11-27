@@ -116,6 +116,12 @@ export interface EntradaAvaliacaoAoEntregar {
   linkConfigurado: boolean;
   /** A loja ligou "Oferecer pedido de avaliação ao entregar uma OS". */
   ativo: boolean;
+  /**
+   * O plano (do dono, quando é funcionário) tem o módulo "marketing"
+   * (useAssinatura().temAcessoModulo). Sem ele nada abre, mesmo com link
+   * salvo e ligado; o link e a mensagem continuam guardados.
+   */
+  planoLibera: boolean;
 }
 
 export function deveOferecerAvaliacaoAoEntregar(e: EntradaAvaliacaoAoEntregar): boolean {
@@ -125,7 +131,8 @@ export function deveOferecerAvaliacaoAoEntregar(e: EntradaAvaliacaoAoEntregar): 
     !e.emLote &&
     e.mudou &&
     e.linkConfigurado &&
-    e.ativo
+    e.ativo &&
+    e.planoLibera
   );
 }
 

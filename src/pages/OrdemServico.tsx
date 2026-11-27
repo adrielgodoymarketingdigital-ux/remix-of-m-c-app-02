@@ -229,7 +229,7 @@ export default function OrdemServicoPage() {
   const { config: configuracaoLoja, refetch: refetchConfig } = useConfiguracaoLoja();
   const { empresas: empresasFiliais, nomeMatriz } = useEmpresa();
   const [lojaFiltro, setLojaFiltro] = useState("todos");
-  const { obterContagemOSMes, abrirPaginaPagamento, limites, carregando: assinaturaCarregando, planoVencido, planoAnterior } = useAssinatura();
+  const { obterContagemOSMes, abrirPaginaPagamento, limites, carregando: assinaturaCarregando, planoVencido, planoAnterior, temAcessoModulo } = useAssinatura();
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
   const { compartilharWhatsApp, gerarLink } = useOSTracking();
@@ -638,12 +638,15 @@ export default function OrdemServicoPage() {
   // Nunca envia nada sozinho; nunca por cima de outro diálogo de WhatsApp aberto.
   const oferecerAvaliacaoAoEntregar = async (id: string, novoStatus: string, statusAnterior: string | undefined) => {
     if (novoStatus !== STATUS_ENTREGUE) return;
+    // Marketing é do Profissional em diante (para funcionário, vale o plano do dono).
+    const planoLibera = temAcessoModulo("marketing");
+    if (!planoLibera) return;
     const avaliacao = lerConfigAvaliacaoGoogle(configuracaoLoja?.mensagens_whatsapp_os);
     if (!avaliacao.linkValido || !avaliacao.ativo) return;
     const ordemAtualizada = await buscarOrdemCompleta(id, true);
     const mudou = !!ordemAtualizada && ordemAtualizada.status === novoStatus;
     if (!ordemAtualizada || !deveOferecerAvaliacaoAoEntregar({
-      novoStatus, statusAnterior, emLote: false, mudou, linkConfigurado: true, ativo: true,
+      novoStatus, statusAnterior, emLote: false, mudou, linkConfigurado: true, ativo: true, planoLibera,
     })) return;
     if (dialogWhatsAppAbertoRef.current) return;
     setContextoWhatsApp("avaliacao");
