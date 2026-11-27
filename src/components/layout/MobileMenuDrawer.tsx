@@ -131,10 +131,9 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
   const sair = useLogout();
   const handleLogout = () => sair(() => onOpenChange(false));
 
-  const { mostrarNovo, marcarAberto } = useEtiquetaNovoMenu();
+  const { mostrarNovo } = useEtiquetaNovoMenu();
 
   const handleNavigate = (url: string) => {
-    marcarAberto(url);
     navigate(url);
     onOpenChange(false);
   };

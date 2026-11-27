@@ -111,7 +111,7 @@ export function AppSidebar() {
   const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
   const fiscalVisivel = useFiscalVisivel();
   const importacaoXmlVisivel = useImportacaoXmlCompraVisivel();
-  const { mostrarNovo, marcarAberto } = useEtiquetaNovoMenu();
+  const { mostrarNovo } = useEtiquetaNovoMenu();
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -178,7 +178,7 @@ export function AppSidebar() {
         <SidebarMenuButton
           onClick={temSubmenu
             ? () => setExpandidos(prev => ({ ...prev, [item.url]: !expandido }))
-            : () => { marcarAberto(item.url); navigate(item.url); }
+            : () => navigate(item.url)
           }
           isActive={isItemActive}
           className={
