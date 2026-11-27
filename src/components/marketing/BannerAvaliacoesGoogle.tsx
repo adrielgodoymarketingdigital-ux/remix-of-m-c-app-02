@@ -11,7 +11,7 @@ export function BannerAvaliacoesGoogle() {
 
   return (
     <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-primary/10 via-primary/5 to-card shadow-sm">
-      <div className="flex items-center gap-4 p-4 sm:gap-5 sm:p-6 md:pr-[340px]">
+      <div className="flex items-center gap-4 p-4 sm:gap-5 sm:p-6 md:min-h-[136px] md:pr-[340px]">
         <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl border bg-card shadow-sm sm:flex">
           <Star className="h-7 w-7 fill-amber-400 text-amber-400" aria-hidden="true" />
         </span>
@@ -23,7 +23,7 @@ export function BannerAvaliacoesGoogle() {
 
       {/* Ilustração decorativa (dados fictícios). */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-6 hidden w-[310px] items-center md:flex">
-        <div className="-rotate-2 rounded-2xl border bg-card px-4 py-3 shadow-lg">
+        <div className="-rotate-2 rounded-2xl border bg-card px-4 py-2.5 shadow-lg">
           <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {t("banner.exemplo")}
           </span>

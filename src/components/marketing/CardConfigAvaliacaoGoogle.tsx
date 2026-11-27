@@ -268,7 +268,6 @@ export function CardConfigAvaliacaoGoogle({ config, atualizarConfiguracao, aoSal
         link={linkPrevia}
         nomeLoja={nomeLojaPrevia}
         logoUrl={config?.logo_url}
-        className="min-[1250px]:sticky min-[1250px]:top-4"
       />
     </div>
   );
