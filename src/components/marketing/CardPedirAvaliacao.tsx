@@ -58,17 +58,21 @@ export function CardPedirAvaliacao({ config }: CardPedirAvaliacaoProps) {
     : "";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <FaWhatsapp className="h-5 w-5 text-[#25D366]" />
-          {t("avaliacao.pedirTitulo")}
-        </CardTitle>
-        <CardDescription>{t("avaliacao.pedirDescricao")}</CardDescription>
+    <Card className="overflow-hidden rounded-2xl">
+      <CardHeader className="border-b p-4 sm:p-6">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#25D366]/15">
+            <FaWhatsapp className="h-6 w-6 text-[#1DA851]" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="text-lg">{t("avaliacao.pedirTitulo")}</CardTitle>
+            <CardDescription>{t("avaliacao.pedirDescricao")}</CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 p-4 pt-5 sm:p-6">
         {!link && (
-          <p className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+          <p className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
             <Info className="h-4 w-4 mt-0.5 shrink-0" />
             {t("avaliacao.semLinkDica")}
           </p>
@@ -81,15 +85,15 @@ export function CardPedirAvaliacao({ config }: CardPedirAvaliacaoProps) {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder={t("avaliacao.buscar")}
-              className="pl-9"
+              className="h-11 rounded-lg bg-muted/30 pl-9"
             />
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
-            <Button type="button" variant="outline" className="gap-2" disabled={!link} onClick={() => link && copiar(link)}>
+            <Button type="button" variant="outline" className="h-11 gap-2 rounded-lg" disabled={!link} onClick={() => link && copiar(link)}>
               <Link2 className="h-4 w-4" />
               {t("avaliacao.copiarLink")}
             </Button>
-            <Button type="button" variant="outline" className="gap-2" disabled={!link} onClick={() => copiar(mensagemGenerica)}>
+            <Button type="button" variant="outline" className="h-11 gap-2 rounded-lg" disabled={!link} onClick={() => copiar(mensagemGenerica)}>
               <Copy className="h-4 w-4" />
               {t("avaliacao.copiarMensagem")}
             </Button>
@@ -98,18 +102,18 @@ export function CardPedirAvaliacao({ config }: CardPedirAvaliacaoProps) {
 
         {loading ? (
           <div className="space-y-2">
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <Skeleton className="h-14 w-full rounded-xl" />
           </div>
         ) : lista.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             {busca.trim() ? t("avaliacao.vazioBusca") : t("avaliacao.vazio")}
           </p>
         ) : (
-          <ul className="divide-y rounded-lg border">
+          <ul className="divide-y overflow-hidden rounded-xl border">
             {lista.map((ordem) => (
-              <li key={ordem.id} className="flex items-center gap-3 px-3 py-2.5">
+              <li key={ordem.id} className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     <span className="text-muted-foreground">#{ordem.numero_os}</span>{" "}
@@ -124,7 +128,7 @@ export function CardPedirAvaliacao({ config }: CardPedirAvaliacaoProps) {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="gap-2 shrink-0"
+                  className="shrink-0 gap-2 rounded-lg"
                   disabled={!link}
                   aria-label={t("avaliacao.botaoPedir")}
                   onClick={() => setOrdemDialogo(ordem)}
