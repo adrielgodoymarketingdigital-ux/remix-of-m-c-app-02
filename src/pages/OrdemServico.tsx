@@ -67,6 +67,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { KanbanOrdensServico } from "@/components/ordens/KanbanOrdensServico";
 import { KanbanTempoAberto } from "@/components/ordens/KanbanTempoAberto";
 import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
+import { deveOferecerWhatsAppAoFinalizar, STATUS_FINALIZADO } from "@/lib/ordemServico/whatsappAoFinalizar";
 
 const DialogOrdemServico = lazy(() => import("@/components/ordens/DialogOrdemServico").then((m) => ({ default: m.DialogOrdemServico })));
 const DialogOrdemServicoSimplificada = lazy(() => import("@/components/ordens/DialogOrdemServicoSimplificada").then((m) => ({ default: m.DialogOrdemServicoSimplificada })));
@@ -179,6 +180,8 @@ export default function OrdemServicoPage() {
   const [ordemParaAssinatura, setOrdemParaAssinatura] = useState<OrdemServico | null>(null);
   const [dialogWhatsApp, setDialogWhatsApp] = useState(false);
   const [ordemParaWhatsApp, setOrdemParaWhatsApp] = useState<OrdemServico | null>(null);
+  // "finalizado" = diálogo aberto sozinho ao finalizar a OS (só muda o título).
+  const [contextoWhatsApp, setContextoWhatsApp] = useState<"finalizado" | undefined>(undefined);
   const [ordemParaRecibo, setOrdemParaRecibo] = useState<OrdemServico | null>(null);
   const [dialogLimiteAtingido, setDialogLimiteAtingido] = useState(false);
   const [dialogNumeracao, setDialogNumeracao] = useState(false);
@@ -596,11 +599,28 @@ export default function OrdemServicoPage() {
       return;
     }
     
+    const statusAnterior = ordens.find(o => o.id === id)?.status;
     await atualizarStatus(id, novoStatus);
 
     if (statusConfig?.gera_conta && !statusConfig?.pedir_data_vencimento) {
       await criarContaParaStatus(id, novoStatus, null, false);
     }
+
+    await oferecerWhatsAppAoFinalizar(id, novoStatus, statusAnterior);
+  };
+
+  // Depois de finalizar UMA OS na tela, abre o diálogo de WhatsApp (não envia nada sozinho).
+  // atualizarStatus não devolve sucesso (engole o erro com toast): relê a OS e só abre
+  // se ela estiver gravada com o novo status. A releitura também traz o status novo
+  // para o diálogo escolher o template certo.
+  const oferecerWhatsAppAoFinalizar = async (id: string, novoStatus: string, statusAnterior: string | undefined) => {
+    if (novoStatus !== STATUS_FINALIZADO) return;
+    const ordemAtualizada = await buscarOrdemCompleta(id);
+    const mudou = !!ordemAtualizada && ordemAtualizada.status === novoStatus;
+    if (!ordemAtualizada || !deveOferecerWhatsAppAoFinalizar({ novoStatus, statusAnterior, emLote: false, mudou })) return;
+    setContextoWhatsApp("finalizado");
+    setOrdemParaWhatsApp(ordemAtualizada);
+    setDialogWhatsApp(true);
   };
 
   const criarContaParaStatus = async (ordemId: string, _status: string, dataVencimento: Date | null, semPrazo: boolean) => {
@@ -653,11 +673,15 @@ export default function OrdemServicoPage() {
   const handlePopupContaConfirmar = async (dataVencimento: Date | null, semPrazo: boolean) => {
     if (!pendingStatusChange) return;
 
+    const { id, slug } = pendingStatusChange;
+    const statusAnterior = ordens.find(o => o.id === id)?.status;
     await atualizarStatus(pendingStatusChange.id, pendingStatusChange.slug);
     await criarContaParaStatus(pendingStatusChange.id, pendingStatusChange.slug, dataVencimento, semPrazo);
 
     setDialogPopupConta(false);
     setPendingStatusChange(null);
+
+    await oferecerWhatsAppAoFinalizar(id, slug, statusAnterior);
   };
 
   const handleConfirmarProblemaGarantia = async (_problemaRelatado: string) => {
@@ -669,6 +693,7 @@ export default function OrdemServicoPage() {
   const handleEnviarWhatsApp = async (ordem: OrdemServico) => {
     const ordemCompleta = await buscarOrdemCompleta(ordem.id);
     if (!ordemCompleta) return;
+    setContextoWhatsApp(undefined);
     setOrdemParaWhatsApp(ordemCompleta);
     setDialogWhatsApp(true);
   };
@@ -1538,6 +1563,7 @@ export default function OrdemServicoPage() {
             onOpenChange={setDialogWhatsApp}
             ordem={ordemParaWhatsApp}
             loja={configuracaoLoja || undefined}
+            contexto={contextoWhatsApp}
           />
 
           <DialogEmitirReciboOS
