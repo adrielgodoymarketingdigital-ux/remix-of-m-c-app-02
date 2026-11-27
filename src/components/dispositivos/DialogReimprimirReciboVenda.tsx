@@ -23,6 +23,7 @@ import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot, url
 import { decidirCaminhoImpressaoRecibo, iosInstalado } from "@/lib/impressao/caminhoImpressaoRecibo";
 import { abrirDestinoImpressaoRecibo } from "@/lib/impressao/destinoImpressaoRecibo";
 import { gerarReciboVendaPDF } from "@/lib/gerarReciboVendaPDF";
+import { compactarReciboDispositivoA4 } from "@/lib/recibo/medicaoImpressaoA4";
 import { carregarTrocaRecibo } from "@/lib/vendas/carregarTrocaRecibo";
 import { DadosTrocaRecibo, htmlBlocoTrocaRecibo, montarBlocoTrocaRecibo, textoBlocoTrocaRecibo } from "@/lib/vendas/reciboTroca";
 import { BlocoTrocaRecibo } from "@/components/vendas/BlocoTrocaRecibo";
@@ -837,9 +838,14 @@ export function DialogReimprimirReciboVenda({
     // resolvido (diálogo aberto há poucos ms), cai pra URL direta — melhor
     // arriscar um logo sem cache de rede do que perder a janela de ativação
     // esperando o base64.
+    // A4: compacta para caber numa folha ou junta o último termo com as
+    // assinaturas (lib/recibo/compactacaoReciboVendaA4). Medição síncrona —
+    // continua sem await antes do print() no iOS. Cabe = HTML e CSS de sempre.
+    const ajustarA4 = (body: string) => (formato === 'a4' ? compactarReciboDispositivoA4({ css: cssRecibo, body }) : { css: cssRecibo, body });
+
     if (usarPrintRoot) {
-      const bodyRecibo = montarBodyRecibo(logoBase64 ?? configLoja?.logo_url ?? null);
-      printViaPrintRoot(bodyRecibo, cssRecibo);
+      const reciboA4 = ajustarA4(montarBodyRecibo(logoBase64 ?? configLoja?.logo_url ?? null));
+      printViaPrintRoot(reciboA4.body, reciboA4.css);
       return;
     }
 
@@ -852,7 +858,7 @@ export function DialogReimprimirReciboVenda({
       const logoBase64Fetched = await urlParaBase64(logoSrc);
       if (logoBase64Fetched) logoSrc = logoBase64Fetched;
     }
-    const bodyRecibo = montarBodyRecibo(logoSrc);
+    const reciboA4 = ajustarA4(montarBodyRecibo(logoSrc));
 
     // Desktop e Android continuam com o documento isolado completo
     // (DOCTYPE + head + script de auto-print), sem mudança de comportamento.
@@ -862,10 +868,10 @@ export function DialogReimprimirReciboVenda({
   <meta charset="utf-8">
   <link rel="icon" type="image/png" href="/pwa-192x192.png">
   <title>Termo de Garantia - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
-  <style>${cssRecibo}</style>
+  <style>${reciboA4.css}</style>
 </head>
 <body>
-${bodyRecibo}
+${reciboA4.body}
 
   <script>
     window.onload = function() {
