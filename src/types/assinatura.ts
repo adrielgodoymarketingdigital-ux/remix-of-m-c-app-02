@@ -63,6 +63,7 @@ export interface LimitesPlano {
     landing_page: boolean; // Função em desenvolvimento - apenas admin
     precificador: boolean;
     pedidos: boolean;
+    marketing: boolean; // Marketing (/marketing): a partir do Profissional
   };
   recursos_premium: {
     consulta_imei: boolean;
@@ -103,6 +104,7 @@ const LIMITES_FREE_LEGADO: LimitesPlano = {
     landing_page: false,
     precificador: false,
     pedidos: false,
+    marketing: false,
   },
   recursos_premium: {
     consulta_imei: false,
@@ -138,6 +140,7 @@ const LIMITES_FREE: LimitesPlano = {
     landing_page: false,
     precificador: false,
     pedidos: false,
+    marketing: false,
   },
   recursos_premium: {
     consulta_imei: false,
@@ -173,6 +176,7 @@ const LIMITES_TRIAL: LimitesPlano = {
     landing_page: false, // Em desenvolvimento
     precificador: false,
     pedidos: true,
+    marketing: true,
   },
   recursos_premium: {
     consulta_imei: true,
@@ -208,6 +212,7 @@ const LIMITES_ADMIN: LimitesPlano = {
     landing_page: true, // Admin tem acesso para testar
     precificador: true,
     pedidos: true,
+    marketing: true,
   },
   recursos_premium: {
     consulta_imei: true,
@@ -243,6 +248,7 @@ const LIMITES_BASICO: LimitesPlano = {
     landing_page: false,
     precificador: false,
     pedidos: false,
+    marketing: false,
   },
   recursos_premium: {
     consulta_imei: false,
@@ -278,6 +284,7 @@ const LIMITES_INTERMEDIARIO: LimitesPlano = {
     landing_page: false,
     precificador: false,
     pedidos: true,
+    marketing: false,
   },
   recursos_premium: {
     consulta_imei: false,
@@ -313,6 +320,7 @@ const LIMITES_PROFISSIONAL: LimitesPlano = {
     landing_page: false,
     precificador: false,
     pedidos: true,
+    marketing: true,
   },
   recursos_premium: {
     consulta_imei: true,

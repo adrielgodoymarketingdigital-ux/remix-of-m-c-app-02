@@ -398,6 +398,7 @@ export function useAssinatura() {
       landing_page: false,
       precificador: false,
       pedidos: false,
+      marketing: false,
     },
     recursos_premium: {
       consulta_imei: false,
