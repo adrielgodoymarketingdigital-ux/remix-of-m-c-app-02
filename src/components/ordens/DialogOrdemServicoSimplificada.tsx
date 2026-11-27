@@ -41,6 +41,7 @@ import { SelecionadorServico } from "./SelecionadorServico";
 import { custoLinhaServico, lucroLinhaServico, valorLinhaServico, LinhaServicoOS } from "@/lib/ordemServico/totaisPecasOS";
 import { ResumoFinanceiro } from "./ResumoFinanceiro";
 import { ComboboxComTextoLivre } from "./ordem-servico-wizard/ComboboxComTextoLivre";
+import { useAdicionarModeloNaOS } from "./ordem-servico-wizard/useAdicionarModeloNaOS";
 import {
   OPCAO_OUTRA,
   OPCAO_OUTRO_MODELO,
@@ -276,7 +277,9 @@ export const DialogOrdemServicoSimplificada = ({
     getMarcasCustom,
     getModelosCustom,
     getCoresCustom,
+    criar: criarCatalogoCustom,
   } = useCatalogoDispositivosCustom();
+  const propsAdicionarModelo = useAdicionarModeloNaOS(criarCatalogoCustom);
 
   const tiposCustom = getTiposCustom();
   const marcasDisponiveis = getMarcasPorTipo(formData.dispositivoTipo);
@@ -295,6 +298,12 @@ export const DialogOrdemServicoSimplificada = ({
   const coresCustom = marcaEhTextoLivre
     ? []
     : getCoresCustom(formData.dispositivoTipo, formData.dispositivoMarca).map((r) => r.nome);
+  const adicionarModelo = propsAdicionarModelo({
+    tipo: formData.dispositivoTipo,
+    marca: formData.dispositivoMarca,
+    marcas: [...marcasDisponiveis, ...marcasCustom],
+    modelosExistentes: [...modelosDisponiveis, ...modelosCustom],
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -700,7 +709,7 @@ export const DialogOrdemServicoSimplificada = ({
               </div>
               <div>
                 <Label htmlFor="dispositivoModelo">Modelo *</Label>
-                {(modelosDisponiveis.length > 0 || modelosCustom.length > 0) ? (
+                {(modelosDisponiveis.length > 0 || modelosCustom.length > 0 || adicionarModelo.onAdicionarNovo) ? (
                   <ComboboxComTextoLivre
                     id="dispositivoModelo"
                     value={formData.dispositivoModelo}
@@ -709,7 +718,9 @@ export const DialogOrdemServicoSimplificada = ({
                     opcaoOutra={OPCAO_OUTRO_MODELO}
                     placeholder="Selecione o modelo"
                     buscaPlaceholder="Buscar modelo..."
-                    onChange={(value) => setFormData({ ...formData, dispositivoModelo: value })}
+                    // Forma com função: o modelo novo chega depois do await de salvar no catálogo.
+                    onChange={(value) => setFormData((prev) => ({ ...prev, dispositivoModelo: value }))}
+                    {...adicionarModelo}
                   />
                 ) : (
                   <Input

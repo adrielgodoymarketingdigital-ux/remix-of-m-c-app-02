@@ -14,6 +14,7 @@ import { MarcacaoAvarias } from "../MarcacaoAvarias";
 import { CampoLabel } from "./CampoLabel";
 import { ComboboxComTextoLivre } from "./ComboboxComTextoLivre";
 import { useCatalogoDispositivosCustom } from "@/hooks/useCatalogoDispositivosCustom";
+import { useAdicionarModeloNaOS } from "./useAdicionarModeloNaOS";
 import { OPCAO_OUTRA, OPCAO_OUTRO_MODELO, OPCAO_OUTRA_COR, TIPOS_DISPOSITIVO_OS } from "@/data/catalogoDispositivos";
 import { opcoesCatalogoDispositivo } from "@/lib/ordemServico/opcoesCatalogoDispositivo";
 import { DispositivoAdicionalForm, validarDispositivosAdicionais } from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
@@ -46,7 +47,8 @@ export function EditorDispositivoAdicional({ aparelho, titulo, onSalvar, onCance
     setCamposComErro([]);
   }, [aparelho]);
 
-  const { getTiposCustom, getMarcasCustom, getModelosCustom, getCoresCustom } = useCatalogoDispositivosCustom();
+  const { getTiposCustom, getMarcasCustom, getModelosCustom, getCoresCustom, criar } = useCatalogoDispositivosCustom();
+  const propsAdicionarModelo = useAdicionarModeloNaOS(criar);
 
   const d = rascunho;
   const tiposCustom = getTiposCustom();
@@ -54,6 +56,13 @@ export function EditorDispositivoAdicional({ aparelho, titulo, onSalvar, onCance
     marcas: d ? getMarcasCustom(d.dispositivo_tipo).map((r) => r.nome) : [],
     modelos: d ? getModelosCustom(d.dispositivo_tipo, d.dispositivo_marca).map((r) => r.nome) : [],
     cores: d ? getCoresCustom(d.dispositivo_tipo, d.dispositivo_marca).map((r) => r.nome) : [],
+  });
+
+  const adicionarModelo = propsAdicionarModelo({
+    tipo: d?.dispositivo_tipo ?? "",
+    marca: d?.dispositivo_marca ?? "",
+    marcas: [...opcoes.marcas, ...opcoes.marcasCustom],
+    modelosExistentes: [...opcoes.modelos, ...opcoes.modelosCustom],
   });
 
   const alterar = (parcial: Partial<DispositivoAdicionalForm>) => setRascunho((atual) => (atual ? { ...atual, ...parcial } : atual));
@@ -152,7 +161,7 @@ export function EditorDispositivoAdicional({ aparelho, titulo, onSalvar, onCance
 
                   <div>
                     <CampoLabel htmlFor="adicionalModelo" texto="Modelo" obrigatorio />
-                    {(opcoes.modelos.length > 0 || opcoes.modelosCustom.length > 0) ? (
+                    {(opcoes.modelos.length > 0 || opcoes.modelosCustom.length > 0 || adicionarModelo.onAdicionarNovo) ? (
                       <ComboboxComTextoLivre
                         id="adicionalModelo"
                         value={d.dispositivo_modelo}
@@ -164,6 +173,7 @@ export function EditorDispositivoAdicional({ aparelho, titulo, onSalvar, onCance
                         onChange={(modelo) => alterar({ dispositivo_modelo: modelo })}
                         className="h-10 rounded-xl"
                         erro={erro("dispositivo_modelo")}
+                        {...adicionarModelo}
                       />
                     ) : (
                       <Input

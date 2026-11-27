@@ -11,6 +11,7 @@ import { CampoLabel } from "./CampoLabel";
 import { FormData } from "./tipos";
 import { ComboboxComTextoLivre } from "./ComboboxComTextoLivre";
 import { useCatalogoDispositivosCustom } from "@/hooks/useCatalogoDispositivosCustom";
+import { useAdicionarModeloNaOS } from "./useAdicionarModeloNaOS";
 import {
   OPCAO_OUTRA,
   OPCAO_OUTRO_MODELO,
@@ -46,7 +47,9 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
     getMarcasCustom,
     getModelosCustom,
     getCoresCustom,
+    criar,
   } = useCatalogoDispositivosCustom();
+  const propsAdicionarModelo = useAdicionarModeloNaOS(criar);
 
   const tiposCustom = getTiposCustom();
   const marcasDisponiveis = getMarcasPorTipo(formData.dispositivoTipo);
@@ -64,6 +67,12 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
   const coresCustom = marcaEhTextoLivre
     ? []
     : getCoresCustom(formData.dispositivoTipo, formData.dispositivoMarca).map((r) => r.nome);
+  const adicionarModelo = propsAdicionarModelo({
+    tipo: formData.dispositivoTipo,
+    marca: formData.dispositivoMarca,
+    marcas: [...marcasDisponiveis, ...marcasCustom],
+    modelosExistentes: [...modelosDisponiveis, ...modelosCustom],
+  });
 
   return (
     <div>
@@ -160,7 +169,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
 
             <div>
               <CampoLabel htmlFor="dispositivoModelo" texto="Modelo" obrigatorio />
-              {(modelosDisponiveis.length > 0 || modelosCustom.length > 0) ? (
+              {(modelosDisponiveis.length > 0 || modelosCustom.length > 0 || adicionarModelo.onAdicionarNovo) ? (
                 <ComboboxComTextoLivre
                   id="dispositivoModelo"
                   value={formData.dispositivoModelo}
@@ -172,6 +181,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                   onChange={(value) => setFormData({ ...formData, dispositivoModelo: value })}
                   className="h-10 rounded-xl"
                   erro={campoComErro === "dispositivoModelo"}
+                  {...adicionarModelo}
                 />
               ) : (
                 <Input
