@@ -68,6 +68,7 @@ import { KanbanOrdensServico } from "@/components/ordens/KanbanOrdensServico";
 import { KanbanTempoAberto } from "@/components/ordens/KanbanTempoAberto";
 import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 import { deveOferecerWhatsAppAoFinalizar, STATUS_FINALIZADO } from "@/lib/ordemServico/whatsappAoFinalizar";
+import { deveOferecerAvaliacaoAoEntregar, lerConfigAvaliacaoGoogle, STATUS_ENTREGUE } from "@/lib/marketing/avaliacaoGoogle";
 
 const DialogOrdemServico = lazy(() => import("@/components/ordens/DialogOrdemServico").then((m) => ({ default: m.DialogOrdemServico })));
 const DialogOrdemServicoSimplificada = lazy(() => import("@/components/ordens/DialogOrdemServicoSimplificada").then((m) => ({ default: m.DialogOrdemServicoSimplificada })));
@@ -179,9 +180,15 @@ export default function OrdemServicoPage() {
   const [dialogAssinaturaSaida, setDialogAssinaturaSaida] = useState(false);
   const [ordemParaAssinatura, setOrdemParaAssinatura] = useState<OrdemServico | null>(null);
   const [dialogWhatsApp, setDialogWhatsApp] = useState(false);
+  // Lido depois de awaits (onSuccess da entrega): o estado capturado estaria velho.
+  const dialogWhatsAppAbertoRef = useRef(false);
+  useEffect(() => { dialogWhatsAppAbertoRef.current = dialogWhatsApp; }, [dialogWhatsApp]);
   const [ordemParaWhatsApp, setOrdemParaWhatsApp] = useState<OrdemServico | null>(null);
   // "finalizado" = diálogo aberto sozinho ao finalizar a OS (só muda o título).
-  const [contextoWhatsApp, setContextoWhatsApp] = useState<"finalizado" | undefined>(undefined);
+  // "avaliacao" = pedido de avaliação no Google, aberto sozinho ao entregar (Marketing).
+  const [contextoWhatsApp, setContextoWhatsApp] = useState<"finalizado" | "avaliacao" | undefined>(undefined);
+  // Status da OS ao abrir a assinatura de entrega (para não oferecer avaliação a OS já entregue).
+  const statusAnteriorEntregaRef = useRef<string | undefined>(undefined);
   const [ordemParaRecibo, setOrdemParaRecibo] = useState<OrdemServico | null>(null);
   const [dialogLimiteAtingido, setDialogLimiteAtingido] = useState(false);
   const [dialogNumeracao, setDialogNumeracao] = useState(false);
@@ -580,6 +587,7 @@ export default function OrdemServicoPage() {
     if (novoStatus === "entregue") {
       const ordemCompleta = await buscarOrdemCompleta(id);
       if (ordemCompleta) {
+        statusAnteriorEntregaRef.current = ordemCompleta.status ?? undefined;
         setOrdemParaAssinatura(ordemCompleta);
         setDialogAssinaturaSaida(true);
         return;
@@ -607,6 +615,7 @@ export default function OrdemServicoPage() {
     }
 
     await oferecerWhatsAppAoFinalizar(id, novoStatus, statusAnterior);
+    await oferecerAvaliacaoAoEntregar(id, novoStatus, statusAnterior);
   };
 
   // Depois de finalizar UMA OS na tela, abre o diálogo de WhatsApp (não envia nada sozinho).
@@ -619,6 +628,25 @@ export default function OrdemServicoPage() {
     const mudou = !!ordemAtualizada && ordemAtualizada.status === novoStatus;
     if (!ordemAtualizada || !deveOferecerWhatsAppAoFinalizar({ novoStatus, statusAnterior, emLote: false, mudou })) return;
     setContextoWhatsApp("finalizado");
+    setOrdemParaWhatsApp(ordemAtualizada);
+    setDialogWhatsApp(true);
+  };
+
+  // Depois de entregar UMA OS (assinatura de entrega confirmada e listas recarregadas),
+  // abre o pedido de avaliação no Google — se a loja configurou o link e ligou a opção
+  // em Marketing. Relê a OS do banco e só abre se ela estiver gravada como entregue.
+  // Nunca envia nada sozinho; nunca por cima de outro diálogo de WhatsApp aberto.
+  const oferecerAvaliacaoAoEntregar = async (id: string, novoStatus: string, statusAnterior: string | undefined) => {
+    if (novoStatus !== STATUS_ENTREGUE) return;
+    const avaliacao = lerConfigAvaliacaoGoogle(configuracaoLoja?.mensagens_whatsapp_os);
+    if (!avaliacao.linkValido || !avaliacao.ativo) return;
+    const ordemAtualizada = await buscarOrdemCompleta(id, true);
+    const mudou = !!ordemAtualizada && ordemAtualizada.status === novoStatus;
+    if (!ordemAtualizada || !deveOferecerAvaliacaoAoEntregar({
+      novoStatus, statusAnterior, emLote: false, mudou, linkConfigurado: true, ativo: true,
+    })) return;
+    if (dialogWhatsAppAbertoRef.current) return;
+    setContextoWhatsApp("avaliacao");
     setOrdemParaWhatsApp(ordemAtualizada);
     setDialogWhatsApp(true);
   };
@@ -682,6 +710,7 @@ export default function OrdemServicoPage() {
     setPendingStatusChange(null);
 
     await oferecerWhatsAppAoFinalizar(id, slug, statusAnterior);
+    await oferecerAvaliacaoAoEntregar(id, slug, statusAnterior);
   };
 
   const handleConfirmarProblemaGarantia = async (_problemaRelatado: string) => {
@@ -1555,7 +1584,13 @@ export default function OrdemServicoPage() {
             open={dialogAssinaturaSaida}
             onOpenChange={setDialogAssinaturaSaida}
             ordem={ordemParaAssinatura}
-            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); await carregarContador(); }}
+            onSuccess={async () => {
+              const entregue = ordemParaAssinatura;
+              await carregarOrdens(); await carregarLucroOrdensEntregues(); await carregarContador();
+              // A assinatura já fechou (onOpenChange(false) logo após onSuccess) e o
+              // caixa/contas da entrega já foram gravados por ela.
+              if (entregue) await oferecerAvaliacaoAoEntregar(entregue.id, STATUS_ENTREGUE, statusAnteriorEntregaRef.current);
+            }}
           />
 
           <DialogEnviarWhatsApp
