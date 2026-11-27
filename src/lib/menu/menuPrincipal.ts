@@ -24,6 +24,8 @@ export interface ItemMenu {
   /** Chave de PermissoesModulos (funcionário) e, quando existir, de LimitesPlano.modulos (dono). */
   modulo: string;
   items?: SubitemMenu[];
+  /** Etiqueta "Novo" até este dia, inclusive ("AAAA-MM-DD", dia local), enquanto o usuário não abrir o item. */
+  novoAte?: string;
 }
 
 export const MENU_PRINCIPAL: ItemMenu[] = [
@@ -52,7 +54,7 @@ export const MENU_PRINCIPAL: ItemMenu[] = [
     { title: "📊 Relatórios", url: "/relatorios", modulo: "relatorios" },
   ]},
   { title: "Equipe", url: "/equipe", modulo: "equipe" },
-  { title: "Marketing", url: "/marketing", modulo: "marketing" },
+  { title: "Marketing", url: "/marketing", modulo: "marketing", novoAte: "2027-01-15" },
   { title: "Configurações", url: "/configuracoes", modulo: "configuracoes" },
   // Só com ctx.fiscalVisivel (useFiscalVisivel: hoje, admin). Solto, logo abaixo de Configurações.
   { title: "Fiscal", url: "/configuracoes/fiscal", modulo: "configuracoes" },
@@ -164,3 +166,38 @@ export function filtrarMenuVisivel<T extends ItemMenu>(todos: T[], ctx: Contexto
 export function urlsVisiveis(itens: ItemMenu[]): string[] {
   return [...new Set(itens.flatMap((i) => (i.items && i.items.length > 0 ? i.items.map((s) => s.url) : [i.url])))];
 }
+
+// ── Etiqueta "Novo" ─────────────────────────────────────────────────────────
+
+const DIA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Mostra a etiqueta "Novo" só se o item tem novoAte, hoje <= novoAte (os dois
+ * "AAAA-MM-DD") e o usuário ainda não abriu o item neste aparelho.
+ */
+export function etiquetaNovoVisivel(e: { novoAte?: string | null; hoje: string; jaAbriu: boolean }): boolean {
+  if (!e.novoAte || e.jaAbriu) return false;
+  if (!DIA_ISO.test(e.novoAte) || !DIA_ISO.test(e.hoje)) return false;
+  return e.hoje <= e.novoAte;
+}
+
+/** Dia local "AAAA-MM-DD" (o fuso do aparelho, não UTC). */
+export function diaLocalISO(d: Date): string {
+  const dois = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}`;
+}
+
+/** Chave do localStorage (por aparelho) que marca o item como aberto: "/marketing" -> "mecapp_menu_novo_visto_marketing". */
+export function chaveNovoVisto(url: string): string {
+  return `mecapp_menu_novo_visto_${url.replace(/^\/+/, "").replace(/\//g, "_")}`;
+}
+
+/**
+ * Cores FIXAS da etiqueta: não usam as variáveis --sidebar-* (cor do menu
+ * personalizável). Texto branco sobre verde-escuro (~9,7:1). Contorno branco de
+ * 1px: a pílula escura se destaca (≥ 3:1) dos fundos médios e claros, o contorno
+ * dos escuros, então qualquer cor de menu serve (varredura em
+ * scripts/testes-menu-principal/). Um verde mais claro (ex.: #047857) falha
+ * em menus verde-médio.
+ */
+export const CORES_ETIQUETA_NOVO = { fundo: "#064e3b", texto: "#ffffff", contorno: "#ffffff" } as const;

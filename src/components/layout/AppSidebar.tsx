@@ -39,6 +39,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useLogout } from "@/hooks/useLogout";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useCorMenuAplicada } from "@/hooks/useCorMenu";
+import { useEtiquetaNovoMenu } from "@/hooks/useEtiquetaNovoMenu";
+import { EtiquetaNovo, PontoNovo } from "@/components/layout/EtiquetaNovo";
 import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
 import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
 import { useImportacaoXmlCompraVisivel } from "@/hooks/useImportacaoXmlCompraVisivel";
@@ -109,6 +111,7 @@ export function AppSidebar() {
   const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
   const fiscalVisivel = useFiscalVisivel();
   const importacaoXmlVisivel = useImportacaoXmlCompraVisivel();
+  const { mostrarNovo, marcarAberto } = useEtiquetaNovoMenu();
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -169,12 +172,13 @@ export function AppSidebar() {
     const estadoManual = expandidos[item.url];
     const expandido = temSubmenu && (estadoManual !== undefined ? estadoManual : subRotaAtiva);
     const isItemActive = !temSubmenu && location.pathname === item.url;
+    const novo = !temSubmenu && mostrarNovo(item);
     return (
       <SidebarMenuItem key={item.title} data-tutorial={tutorialAttr}>
         <SidebarMenuButton
           onClick={temSubmenu
             ? () => setExpandidos(prev => ({ ...prev, [item.url]: !expandido }))
-            : () => navigate(item.url)
+            : () => { marcarAberto(item.url); navigate(item.url); }
           }
           isActive={isItemActive}
           className={
@@ -197,9 +201,13 @@ export function AppSidebar() {
             <>
               <item.icon className="h-5 w-5 shrink-0" />
               {!collapsed && <span>{t(`itens.${chaveDaRota(item.url)}`)}</span>}
+              {!collapsed && novo && <EtiquetaNovo />}
             </>
           )}
         </SidebarMenuButton>
+        {/* Barra recolhida: só um pontinho no canto do ícone. Fica fora do botão
+            (overflow-hidden), no SidebarMenuItem (relative); ícone 16px em (8,8). */}
+        {collapsed && novo && <PontoNovo className="left-[19px] top-[3px]" />}
         {!collapsed && expandido && item.items?.map(sub => (
           <SidebarMenuButton key={sub.url} asChild>
             <NavLink
@@ -282,6 +290,8 @@ export function AppSidebar() {
                             <grupo.icon className="h-3.5 w-3.5 shrink-0 text-sidebar-muted" />
                             <span className="truncate text-[11px] font-bold uppercase tracking-[0.15em] text-sidebar-muted">{t(`grupos.${grupo.key}`)}</span>
                           </span>
+                          {/* Seção recolhida com item novo: a etiqueta aparece no cabeçalho. */}
+                          {grupoColapsado && itensDoGrupo.some((item) => !item.items?.length && mostrarNovo(item)) && <EtiquetaNovo />}
                           <ChevronRight className={`h-3 w-3 shrink-0 text-sidebar-subtle transition-transform ${grupoColapsado ? "" : "rotate-90"}`} />
                         </>
                       )}

@@ -67,6 +67,8 @@ const menu = {
     },
   },
   ajuda: "Ajuda",
+  // Etiqueta ao lado de item novo do menu (novoAte em menuPrincipal.ts).
+  novo: "Novo",
   sair: "Sair",
   logout: {
     titulo: "Logout realizado",

@@ -68,6 +68,7 @@ const menu: Traducao<typeof menuPtBR> = {
     },
   },
   ajuda: "Ayuda",
+  novo: "Nuevo",
   sair: "Salir",
   logout: {
     titulo: "Sesión cerrada",

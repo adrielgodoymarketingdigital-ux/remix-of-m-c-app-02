@@ -2,8 +2,11 @@
 // Menu principal (src/lib/menu/menuPrincipal.ts): uma lista e uma regra para a
 // barra lateral (desktop) e o menu do celular/PWA. Caso real (out/2026): o
 // Extrato não aparecia no celular/PWA — o menu do celular tinha lista própria.
-import { assertEquals } from "jsr:@std/assert@1";
-import { ADMIN_MENU, GRUPOS_MENU, MENU_PRINCIPAL, URL_FISCAL, URL_XML_COMPRA, filtrarMenuVisivel, urlsVisiveis, type ContextoMenu } from "../../src/lib/menu/menuPrincipal.ts";
+import { assert, assertEquals } from "jsr:@std/assert@1";
+import { ADMIN_MENU, CORES_ETIQUETA_NOVO, GRUPOS_MENU, MENU_PRINCIPAL, URL_FISCAL, URL_XML_COMPRA, chaveNovoVisto, diaLocalISO, etiquetaNovoVisivel, filtrarMenuVisivel, urlsVisiveis, type ContextoMenu } from "../../src/lib/menu/menuPrincipal.ts";
+import { LIMITES_POR_PLANO, type PlanoTipo } from "../../src/types/assinatura.ts";
+import { contraste } from "../../src/lib/recibo/corCabecalhoRecibo.ts";
+import { VARIAVEIS_MENU_PADRAO, variaveisDoMenu, variavelParaHex } from "../../src/lib/menu/corMenu.ts";
 
 // Módulos de plano, como em src/types/assinatura.ts (LIMITES_*.modulos), só os que mudam.
 const PLANO = {
@@ -194,3 +197,85 @@ Deno.test("Marketing: funcionário já cadastrado (permissões sem a chave) fica
   assertEquals(hook.includes('"/marketing": "marketing"'), true);
   assertEquals((await Deno.readTextFile("src/components/equipe/SeletorPermissoes.tsx")).includes('modulo: "marketing", label: "Marketing"'), true);
 });
+
+// ── Marketing do Profissional em diante: a trava é na PÁGINA, não no menu ──
+
+Deno.test("Marketing: dono vê o item em Free, Básico, Intermediário, Profissional, Ultra, trial e admin (limites reais)", () => {
+  const planos: PlanoTipo[] = ["free", "demonstracao", "basico_mensal", "basico_anual", "intermediario_mensal", "intermediario_anual",
+    "profissional_mensal", "profissional_anual", "profissional_ultra_mensal", "profissional_ultra_anual", "trial", "admin"];
+  for (const p of planos) {
+    const modulos = LIMITES_POR_PLANO[p].modulos as Record<string, boolean>;
+    const ctx = dono("free", {
+      temAcessoPlano: (m) => modulos[m] ?? true,
+      isUltra: p.startsWith("profissional_ultra"),
+      isAdmin: p === "admin",
+    });
+    assertEquals(ver(ctx).includes("/marketing"), true, p);
+  }
+  // E o limite de fato difere: abaixo do Profissional o módulo está desligado.
+  assertEquals(LIMITES_POR_PLANO.intermediario_mensal.modulos.marketing, false);
+  assertEquals(LIMITES_POR_PLANO.profissional_mensal.modulos.marketing, true);
+});
+
+Deno.test("Marketing: funcionário segue pela permissão (sem permissão não vê; com permissão vê), mesmo com plano do dono sem o módulo", () => {
+  const semPlano = (mods: string[]): ContextoMenu => ({ ...funcionario(mods), temAcessoPlano: (m) => m !== "marketing" });
+  assertEquals(ver(semPlano(["dashboard"])).includes("/marketing"), false);
+  assertEquals(ver(semPlano(["dashboard", "marketing"])).includes("/marketing"), true);
+});
+
+// ── Etiqueta "Novo" ───────────────────────────────────────────────────────
+
+Deno.test("etiquetaNovoVisivel: até a data (inclusive), sem ter aberto", () => {
+  const novoAte = "2027-01-15";
+  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2026-11-27", jaAbriu: false }), true);
+  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2027-01-15", jaAbriu: false }), true);
+  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2027-01-16", jaAbriu: false }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2028-01-01", jaAbriu: false }), false);
+});
+
+Deno.test("etiquetaNovoVisivel: já abriu ou sem novoAte (ou data malformada) = sem etiqueta", () => {
+  assertEquals(etiquetaNovoVisivel({ novoAte: "2027-01-15", hoje: "2026-11-27", jaAbriu: true }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte: undefined, hoje: "2026-11-27", jaAbriu: false }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte: null, hoje: "2026-11-27", jaAbriu: false }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte: "", hoje: "2026-11-27", jaAbriu: false }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte: "15/01/2027", hoje: "2026-11-27", jaAbriu: false }), false);
+});
+
+Deno.test("Etiqueta Novo: só o Marketing tem novoAte (2027-01-15); chave por aparelho e dia local", () => {
+  assertEquals(MENU_PRINCIPAL.filter((i) => i.novoAte).map((i) => [i.url, i.novoAte]), [["/marketing", "2027-01-15"]]);
+  assertEquals(chaveNovoVisto("/marketing"), "mecapp_menu_novo_visto_marketing");
+  assertEquals(chaveNovoVisto("/configuracoes/fiscal"), "mecapp_menu_novo_visto_configuracoes_fiscal");
+  assertEquals(diaLocalISO(new Date(2027, 0, 5, 23, 59)), "2027-01-05");
+});
+
+Deno.test("Etiqueta Novo: cores fixas, texto legível (>= 4,5:1) e pílula destacada de QUALQUER fundo de menu (>= 3:1)", () => {
+  const { fundo, texto, contorno } = CORES_ETIQUETA_NOVO;
+  assert(contraste(texto, fundo) >= 4.5, `texto × pílula = ${contraste(texto, fundo).toFixed(2)}`);
+  // Pílula ou contorno se destaca do fundo do menu: padrão, cores de exemplo e uma varredura de todas as cores.
+  const destaque = (bg: string) => Math.max(contraste(fundo, bg), contraste(contorno, bg));
+  const exemplos = ["#ffffff", "#f1f5f9", "#fde68a", "#facc15", "#22c55e", "#047857", "#0f766e", "#2563eb", "#dc2626", "#7c3aed", "#111827", "#000000"];
+  const fundos = [variavelParaHex(VARIAVEIS_MENU_PADRAO.background), ...exemplos.map((hex) => variavelParaHex(variaveisDoMenu(hex)!.background))];
+  for (const bg of fundos) assert(destaque(bg) >= 3, `fundo ${bg}: ${destaque(bg).toFixed(2)}`);
+  const hex = (n: number) => n.toString(16).padStart(2, "0");
+  for (let r = 0; r < 256; r += 15) for (let g = 0; g < 256; g += 15) for (let b = 0; b < 256; b += 15) {
+    const bg = `#${hex(r)}${hex(g)}${hex(b)}`;
+    assert(destaque(bg) >= 3, `fundo ${bg}: ${destaque(bg).toFixed(2)}`);
+  }
+});
+
+Deno.test("Etiqueta Novo: a pílula não usa as variáveis do menu (--sidebar-*) e o texto vem do i18n", async () => {
+  const comp = await Deno.readTextFile("src/components/layout/EtiquetaNovo.tsx");
+  assertEquals(/(bg|text|ring|border)-(sidebar|primary)|var\(--sidebar/.test(comp), false);
+  assertEquals(comp.includes("CORES_ETIQUETA_NOVO"), true);
+  assertEquals(comp.includes('t("novo")'), true);
+  for (const arq of ["src/components/layout/AppSidebar.tsx", "src/components/layout/MobileMenuDrawer.tsx"]) {
+    const fonte = await Deno.readTextFile(arq);
+    assertEquals(fonte.includes("useEtiquetaNovoMenu()"), true, arq);
+    assertEquals(fonte.includes("<EtiquetaNovo"), true, arq);
+  }
+  assertEquals((await Deno.readTextFile("src/components/layout/AppSidebar.tsx")).includes("{collapsed && novo && <PontoNovo"), true);
+  // localStorage com try/catch: falha = "não abriu", nunca quebra o menu.
+  const hook = await Deno.readTextFile("src/hooks/useEtiquetaNovoMenu.ts");
+  assertEquals((hook.match(/try \{/g) ?? []).length, 2);
+});
+

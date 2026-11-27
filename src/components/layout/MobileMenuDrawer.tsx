@@ -30,6 +30,8 @@ import { useImportacaoXmlCompraVisivel } from "@/hooks/useImportacaoXmlCompraVis
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useCorMenuAplicada } from "@/hooks/useCorMenu";
+import { useEtiquetaNovoMenu } from "@/hooks/useEtiquetaNovoMenu";
+import { EtiquetaNovo } from "@/components/layout/EtiquetaNovo";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { ADMIN_MENU_COM_ICONE, ICONES_MENU, MENU_PRINCIPAL_COM_ICONE } from "@/components/layout/iconesMenu";
 import { GRUPOS_MENU, filtrarMenuVisivel } from "@/lib/menu/menuPrincipal";
@@ -129,7 +131,10 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
   const sair = useLogout();
   const handleLogout = () => sair(() => onOpenChange(false));
 
+  const { mostrarNovo, marcarAberto } = useEtiquetaNovoMenu();
+
   const handleNavigate = (url: string) => {
+    marcarAberto(url);
     navigate(url);
     onOpenChange(false);
   };
@@ -199,6 +204,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
       >
         <item.icon className="h-5 w-5 flex-shrink-0" />
         <span className="flex-1 text-sm">{t(`itens.${chaveDaRota(item.url)}`)}</span>
+        {mostrarNovo(item) && <EtiquetaNovo />}
         <ChevronRight className="h-4 w-4 text-sidebar-subtle" />
       </button>
     );
@@ -256,6 +262,10 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                         className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.15em] text-sidebar-muted active:scale-[0.98] touch-manipulation"
                       >
                         <span>{t(`celular.grupos.${grupo.key}`)}</span>
+                        {/* Seção recolhida com item novo: a etiqueta aparece no cabeçalho. */}
+                        {grupoColapsado && itensDoGrupo.some((item) => !item.items?.length && mostrarNovo(item)) && (
+                          <EtiquetaNovo className="normal-case tracking-normal" />
+                        )}
                         <ChevronRight className={cn("h-3 w-3 shrink-0 text-sidebar-subtle transition-transform", !grupoColapsado && "rotate-90")} />
                       </button>
                       {!grupoColapsado && (
