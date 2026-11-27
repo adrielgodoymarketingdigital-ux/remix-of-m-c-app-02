@@ -3,7 +3,7 @@
 // barra lateral (desktop) e o menu do celular/PWA. Caso real (out/2026): o
 // Extrato não aparecia no celular/PWA — o menu do celular tinha lista própria.
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { ADMIN_MENU, CORES_ETIQUETA_NOVO, GRUPOS_MENU, MENU_PRINCIPAL, URL_FISCAL, URL_XML_COMPRA, chaveNovoVisto, diaLocalISO, etiquetaNovoVisivel, filtrarMenuVisivel, urlsVisiveis, type ContextoMenu } from "../../src/lib/menu/menuPrincipal.ts";
+import { ADMIN_MENU, CORES_ETIQUETA_NOVO, GRUPOS_MENU, MENU_PRINCIPAL, URL_FISCAL, URL_XML_COMPRA, diaLocalISO, etiquetaNovoVisivel, filtrarMenuVisivel, urlsVisiveis, type ContextoMenu } from "../../src/lib/menu/menuPrincipal.ts";
 import { LIMITES_POR_PLANO, type PlanoTipo } from "../../src/types/assinatura.ts";
 import { contraste } from "../../src/lib/recibo/corCabecalhoRecibo.ts";
 import { VARIAVEIS_MENU_PADRAO, variaveisDoMenu, variavelParaHex } from "../../src/lib/menu/corMenu.ts";
@@ -225,26 +225,24 @@ Deno.test("Marketing: funcionário segue pela permissão (sem permissão não v�
 
 // ── Etiqueta "Novo" ───────────────────────────────────────────────────────
 
-Deno.test("etiquetaNovoVisivel: até a data (inclusive), sem ter aberto", () => {
+Deno.test("etiquetaNovoVisivel: até a data (inclusive), some no dia seguinte", () => {
   const novoAte = "2027-01-15";
-  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2026-11-27", jaAbriu: false }), true);
-  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2027-01-15", jaAbriu: false }), true);
-  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2027-01-16", jaAbriu: false }), false);
-  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2028-01-01", jaAbriu: false }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2026-11-27" }), true);
+  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2027-01-15" }), true);
+  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2027-01-16" }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte, hoje: "2028-01-01" }), false);
 });
 
-Deno.test("etiquetaNovoVisivel: já abriu ou sem novoAte (ou data malformada) = sem etiqueta", () => {
-  assertEquals(etiquetaNovoVisivel({ novoAte: "2027-01-15", hoje: "2026-11-27", jaAbriu: true }), false);
-  assertEquals(etiquetaNovoVisivel({ novoAte: undefined, hoje: "2026-11-27", jaAbriu: false }), false);
-  assertEquals(etiquetaNovoVisivel({ novoAte: null, hoje: "2026-11-27", jaAbriu: false }), false);
-  assertEquals(etiquetaNovoVisivel({ novoAte: "", hoje: "2026-11-27", jaAbriu: false }), false);
-  assertEquals(etiquetaNovoVisivel({ novoAte: "15/01/2027", hoje: "2026-11-27", jaAbriu: false }), false);
+Deno.test("etiquetaNovoVisivel: sem novoAte (ou data malformada) = sem etiqueta", () => {
+  assertEquals(etiquetaNovoVisivel({ novoAte: undefined, hoje: "2026-11-27" }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte: null, hoje: "2026-11-27" }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte: "", hoje: "2026-11-27" }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte: "15/01/2027", hoje: "2026-11-27" }), false);
+  assertEquals(etiquetaNovoVisivel({ novoAte: "2027-01-15", hoje: "27/11/2026" }), false);
 });
 
-Deno.test("Etiqueta Novo: só o Marketing tem novoAte (2027-01-15); chave por aparelho e dia local", () => {
+Deno.test("Etiqueta Novo: só o Marketing tem novoAte (2027-01-15); dia local", () => {
   assertEquals(MENU_PRINCIPAL.filter((i) => i.novoAte).map((i) => [i.url, i.novoAte]), [["/marketing", "2027-01-15"]]);
-  assertEquals(chaveNovoVisto("/marketing"), "mecapp_menu_novo_visto_marketing");
-  assertEquals(chaveNovoVisto("/configuracoes/fiscal"), "mecapp_menu_novo_visto_configuracoes_fiscal");
   assertEquals(diaLocalISO(new Date(2027, 0, 5, 23, 59)), "2027-01-05");
 });
 
@@ -274,8 +272,15 @@ Deno.test("Etiqueta Novo: a pílula não usa as variáveis do menu (--sidebar-*)
     assertEquals(fonte.includes("<EtiquetaNovo"), true, arq);
   }
   assertEquals((await Deno.readTextFile("src/components/layout/AppSidebar.tsx")).includes("{collapsed && novo && <PontoNovo"), true);
-  // localStorage com try/catch: falha = "não abriu", nunca quebra o menu.
+});
+
+Deno.test("Etiqueta Novo: abrir a página NÃO faz sumir (hook sem localStorage nem efeito de rota; clique só navega)", async () => {
   const hook = await Deno.readTextFile("src/hooks/useEtiquetaNovoMenu.ts");
-  assertEquals((hook.match(/try \{/g) ?? []).length, 2);
+  assertEquals(/localStorage|useEffect|useLocation|jaAbriu|marcarAberto/.test(hook), false);
+  assertEquals(hook.includes("diaLocalISO(new Date())"), true);
+  for (const arq of ["src/components/layout/AppSidebar.tsx", "src/components/layout/MobileMenuDrawer.tsx"]) {
+    const fonte = await Deno.readTextFile(arq);
+    assertEquals(/marcarAberto|novo_visto/.test(fonte), false, arq);
+  }
 });
 
