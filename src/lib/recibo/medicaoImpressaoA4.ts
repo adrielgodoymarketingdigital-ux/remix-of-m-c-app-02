@@ -10,9 +10,13 @@
  * Qualquer erro = null (o chamador imprime o documento de sempre).
  */
 import {
+  CSS_FINAL_JUNTO_RECIBO_NOVO,
   LIMITE_UMA_FOLHA_HTML_MM,
   NIVEL_MAXIMO_COMPACTACAO,
+  agruparGarantiaFinalReciboNovo,
   aplicarCompactacaoReciboDispositivoA4,
+  cssMedicaoReciboNovo,
+  decidirAgrupamentoReciboNovo,
   decidirCompactacao,
   type NivelCompactacao,
 } from "@/lib/recibo/compactacaoReciboVendaA4";
@@ -91,3 +95,20 @@ export function compactarReciboDispositivoA4(doc: DocumentoMedicao): DocumentoMe
   return aplicarCompactacaoReciboDispositivoA4(doc, decisao);
 }
 
+/**
+ * Recibo novo em A4: não cabendo numa folha, a última garantia + assinaturas
+ * + rodapé vão num bloco só (html com o envoltório + css a acrescentar).
+ * Cabe ou medição falhou = html de sempre e css vazio.
+ */
+export function agruparFimReciboNovoA4(htmlRecibo: string, cssImpressao: string): { html: string; css: string } {
+  const medidas = medirDocumentosA4([{ css: cssMedicaoReciboNovo(cssImpressao), body: htmlRecibo }], {
+    larguraMm: 190, // @page A4 com margem de 10 mm
+    inicioFinal: ".rvn-garantia",
+    fimFinal: ".rvn-assinaturas, .rvn-rodape",
+    cssExtra: ".rvn-cab-logo img { height: 52px; }",
+  });
+  const decisao = decidirAgrupamentoReciboNovo(medidas?.[0].alturaMm, medidas?.[0].finalMm);
+  if (!decisao.agruparFinal) return { html: htmlRecibo, css: "" };
+  const html = agruparGarantiaFinalReciboNovo(htmlRecibo);
+  return html === htmlRecibo ? { html, css: "" } : { html, css: CSS_FINAL_JUNTO_RECIBO_NOVO };
+}

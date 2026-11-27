@@ -214,3 +214,55 @@ export function aplicarCompactacaoReciboDispositivoA4(
     body: decisao!.agruparFinal ? agruparTermoFinalEAssinaturas(doc.body) : doc.body,
   };
 }
+
+// ===================== HTML do recibo novo (kit recibo-novo, só A4) =====================
+// O recibo novo já tem a sua compactação de impressão (@media print do
+// cssReciboVendaNovo): aqui só entra o agrupamento do fim, quando ele não cabe
+// numa folha — a última garantia + textos + assinaturas + rodapé num bloco só.
+
+/** Classe do bloco "última garantia + assinaturas + rodapé" do recibo novo. */
+export const CLASSE_FINAL_JUNTO_RECIBO_NOVO = "rvn-final-junto";
+
+export const CSS_FINAL_JUNTO_RECIBO_NOVO = `
+.${CLASSE_FINAL_JUNTO_RECIBO_NOVO} { page-break-inside: avoid; break-inside: avoid; }
+`;
+
+const INICIO_GARANTIA_NOVO = '<section class="rvn-painel rvn-garantia">';
+const INICIO_ASSINATURAS_NOVO = '<section class="rvn-assinaturas">';
+const INICIO_RODAPE_NOVO = '<footer class="rvn-rodape">';
+
+/**
+ * HTML do recibo novo com a ÚLTIMA garantia, o que vem depois dela e as
+ * assinaturas (e o rodapé logo em seguida, se houver) num bloco que não se
+ * parte. Sem garantia ou sem assinaturas = HTML de sempre.
+ */
+export function agruparGarantiaFinalReciboNovo(html: string): string {
+  const inicio = html.lastIndexOf(INICIO_GARANTIA_NOVO);
+  const assinaturas = html.indexOf(INICIO_ASSINATURAS_NOVO, inicio);
+  if (inicio < 0 || assinaturas < 0) return html;
+  let fim = html.indexOf("</section>", assinaturas);
+  if (fim < 0) return html;
+  fim += "</section>".length;
+  const rodape = html.indexOf(INICIO_RODAPE_NOVO, fim);
+  if (rodape >= 0 && html.slice(fim, rodape).trim() === "") {
+    const fimRodape = html.indexOf("</footer>", rodape);
+    if (fimRodape >= 0) fim = fimRodape + "</footer>".length;
+  }
+  return `${html.slice(0, inicio)}<div class="${CLASSE_FINAL_JUNTO_RECIBO_NOVO}">${html.slice(inicio, fim)}</div>${html.slice(fim)}`;
+}
+
+/**
+ * Decisão do recibo novo a partir da altura medida (mm) e do bloco final (mm):
+ * cabe = nada muda; não cabe = agrupa o fim (sem níveis de compactação aqui).
+ */
+export function decidirAgrupamentoReciboNovo(alturaMm: number | null | undefined, finalMm: number | null | undefined, limiteMm: number = LIMITE_UMA_FOLHA_HTML_MM): DecisaoCompactacao {
+  return decidirCompactacao({ alturasPorNivel: [alturaMm, alturaMm, alturaMm], alturaFinalMm: finalMm }, limiteMm);
+}
+
+/**
+ * CSS de medição do recibo novo: o CSS de impressão com o @media print valendo
+ * na tela (a medição roda num iframe escondido, não na impressão).
+ */
+export function cssMedicaoReciboNovo(cssImpressao: string): string {
+  return cssImpressao.replace(/@media print\b/g, "@media all");
+}

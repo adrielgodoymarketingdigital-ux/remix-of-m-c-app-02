@@ -23,7 +23,7 @@ import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot, url
 import { decidirCaminhoImpressaoRecibo, iosInstalado } from "@/lib/impressao/caminhoImpressaoRecibo";
 import { abrirDestinoImpressaoRecibo } from "@/lib/impressao/destinoImpressaoRecibo";
 import { gerarReciboVendaPDF } from "@/lib/gerarReciboVendaPDF";
-import { compactarReciboDispositivoA4 } from "@/lib/recibo/medicaoImpressaoA4";
+import { agruparFimReciboNovoA4, compactarReciboDispositivoA4 } from "@/lib/recibo/medicaoImpressaoA4";
 import { carregarTrocaRecibo } from "@/lib/vendas/carregarTrocaRecibo";
 import { DadosTrocaRecibo, htmlBlocoTrocaRecibo, montarBlocoTrocaRecibo, textoBlocoTrocaRecibo } from "@/lib/vendas/reciboTroca";
 import { BlocoTrocaRecibo } from "@/components/vendas/BlocoTrocaRecibo";
@@ -446,12 +446,14 @@ export function DialogReimprimirReciboVenda({
     // iframe no Android, janela no computador. iOS instalado segue no PDF acima.
     if (formato === "a4" && usarReciboNovo && reciboNovo.kit && reciboNovoRef.current) {
       const kit = reciboNovo.kit;
-      const htmlRecibo = reciboNovoRef.current.innerHTML;
+      // Não cabe numa folha: última garantia + assinaturas + rodapé juntos (cabe = recibo de sempre).
+      const { html: htmlRecibo, css: cssFinalJunto } = agruparFimReciboNovoA4(reciboNovoRef.current.innerHTML, kit.cssReciboVendaNovo({ paraImpressao: true }));
       if (usarPrintRoot) {
-        printViaPrintRoot(htmlRecibo, kit.cssPrintRootReciboNovo());
+        printViaPrintRoot(htmlRecibo, kit.cssPrintRootReciboNovo() + cssFinalJunto);
         return;
       }
-      const documento = kit.documentoImpressaoReciboNovo(htmlRecibo, `Recibo de Venda - ${[venda.dispositivo_marca, venda.dispositivo_modelo].filter(Boolean).join(" ")}`);
+      const documentoBase = kit.documentoImpressaoReciboNovo(htmlRecibo, `Recibo de Venda - ${[venda.dispositivo_marca, venda.dispositivo_modelo].filter(Boolean).join(" ")}`);
+      const documento = cssFinalJunto ? documentoBase.replace("</style>", `${cssFinalJunto}</style>`) : documentoBase;
       if (usarIframe) {
         printViaIframe(documento, isIOS);
         return;

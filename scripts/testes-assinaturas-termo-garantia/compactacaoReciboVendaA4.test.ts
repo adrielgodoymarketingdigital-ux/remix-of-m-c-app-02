@@ -18,6 +18,11 @@ import {
   decisaoMudaDocumento,
   linhasDoBlocoFinal,
   type MedidasCompactacao,
+  CLASSE_FINAL_JUNTO_RECIBO_NOVO,
+  CSS_FINAL_JUNTO_RECIBO_NOVO,
+  agruparGarantiaFinalReciboNovo,
+  cssMedicaoReciboNovo,
+  decidirAgrupamentoReciboNovo,
 } from "../../src/lib/recibo/compactacaoReciboVendaA4.ts";
 
 const L = LIMITE_UMA_FOLHA_PDF_MM;
@@ -153,4 +158,35 @@ Deno.test("HTML antigo: agrupamento envolve o ÚLTIMO termo + assinaturas num bl
   const r = aplicarCompactacaoReciboDispositivoA4({ css: "c", body: corpo }, { nivel: 0, agruparFinal: true, motivo: "duasFolhas" });
   assertEquals(r.body, agrupado);
   assert(r.css.startsWith("c") && r.css.includes(CLASSE_FINAL_JUNTO));
+});
+
+Deno.test("recibo novo: agrupa a ÚLTIMA garantia + textos + assinaturas + rodapé", () => {
+  const g = (n: string) => `<section class="rvn-painel rvn-garantia"><svg></svg><div>${n}</div></section>`;
+  const ass = '<section class="rvn-assinaturas"><div class="rvn-assinatura">A</div></section>';
+  const rod = '<footer class="rvn-rodape"><div>R</div></footer>';
+  const textos = '<section class="rvn-textos"><div>T</div></section>';
+  const html = `<div class="rvn"><div class="rvn-corpo">${g("1")}${g("2")}${textos}${ass}${rod}</div></div>`;
+  assertEquals(
+    agruparGarantiaFinalReciboNovo(html),
+    `<div class="rvn"><div class="rvn-corpo">${g("1")}<div class="${CLASSE_FINAL_JUNTO_RECIBO_NOVO}">${g("2")}${textos}${ass}${rod}</div></div></div>`,
+  );
+  // Sem rodapé logo depois: só até as assinaturas.
+  const semRodape = `<div class="rvn-corpo">${g("1")}${ass}</div>`;
+  assertEquals(agruparGarantiaFinalReciboNovo(semRodape), `<div class="rvn-corpo"><div class="${CLASSE_FINAL_JUNTO_RECIBO_NOVO}">${g("1")}${ass}</div></div>`);
+  // Sem garantia ou sem assinaturas: HTML de sempre.
+  assertEquals(agruparGarantiaFinalReciboNovo(`<div>${ass}${rod}</div>`), `<div>${ass}${rod}</div>`);
+  assertEquals(agruparGarantiaFinalReciboNovo(`<div>${g("1")}${rod}</div>`), `<div>${g("1")}${rod}</div>`);
+  // Nada some: tirando o envoltório, igual.
+  assertEquals(agruparGarantiaFinalReciboNovo(html).replace(`<div class="${CLASSE_FINAL_JUNTO_RECIBO_NOVO}">`, "").replace(`${rod}</div></div></div>`, `${rod}</div></div>`), html);
+  assert(CSS_FINAL_JUNTO_RECIBO_NOVO.includes(`.${CLASSE_FINAL_JUNTO_RECIBO_NOVO} { page-break-inside: avoid; break-inside: avoid; }`));
+});
+
+Deno.test("recibo novo: decisão só agrupa quando não cabe e o fim cabe numa folha", () => {
+  assertEquals(decidirAgrupamentoReciboNovo(250, 80), { nivel: 0, agruparFinal: false, motivo: "cabe" });
+  assertEquals(decidirAgrupamentoReciboNovo(296, 80), { nivel: 0, agruparFinal: true, motivo: "duasFolhas" });
+  assertEquals(decidirAgrupamentoReciboNovo(500, 300).agruparFinal, false);
+  assertEquals(decidirAgrupamentoReciboNovo(undefined, 80), SEM_COMPACTACAO);
+  assertEquals(decidirAgrupamentoReciboNovo(296, null), SEM_COMPACTACAO);
+  assertEquals(decidirAgrupamentoReciboNovo(NaN, 80), SEM_COMPACTACAO);
+  assertEquals(cssMedicaoReciboNovo("a @media print { x } @media (max-width: 600px) { y } @media print{z}"), "a @media all { x } @media (max-width: 600px) { y } @media all{z}");
 });
