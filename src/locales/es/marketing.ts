@@ -1,0 +1,75 @@
+// Namespace "marketing" en español neutro latinoamericano, con "usted"
+// (glosario: docs/i18n/glosario-es.md). Baixado só quando o idioma "es" é aplicado.
+import type marketingPtBR from "../pt-BR/marketing";
+import type { Traducao } from "../tipos";
+
+const marketing: Traducao<typeof marketingPtBR> = {
+  titulo: "Marketing",
+  subtitulo: "Herramientas para atraer y fidelizar clientes",
+  secoes: {
+    avaliacoesGoogle: "Reseñas en Google",
+  },
+  avaliacao: {
+    configTitulo: "Enlace de reseñas de Google",
+    configDescricao: "Registre el enlace para que sus clientes califiquen su tienda en Google.",
+    campoLink: "Enlace de reseñas",
+    placeholderLink: "https://g.page/r/.../review",
+    testarLink: "Probar enlace",
+    comoPegarTitulo: "Dónde obtener el enlace",
+    passo1: "Abra el Perfil de Empresa en Google (Google Mi Negocio) de su tienda.",
+    passo2: "Toque \"Pedir reseñas\" o \"Compartir formulario de reseñas\".",
+    passo3: "Copie el enlace y péguelo aquí.",
+    erros: {
+      vazio: "Ingrese el enlace de reseñas.",
+      longo: "Este enlace es demasiado largo. Copie de nuevo el enlace de reseñas de Google.",
+      invalido: "Este texto no es un enlace válido.",
+      esquema: "Use un enlace que empiece con https:// (no se aceptan enlaces http ni de otro tipo).",
+      dominio: "Use un enlace de reseñas de Google (g.page, search.google.com, maps.app.goo.gl, google.com/maps...).",
+      incompleto: "El enlace está incompleto. Copie el enlace completo de \"Pedir reseñas\".",
+    },
+    oferecerTitulo: "Ofrecer pedido de reseña al entregar una orden",
+    oferecerDescricao: "Al cambiar una orden al estado Entregado, la app abre WhatsApp con el mensaje listo. No se envía nada hasta que usted toque enviar.",
+    mensagemTitulo: "Mensaje",
+    mensagemDescricao: "Toque una variable para insertarla en el texto. Si quita el enlace del mensaje, se agrega solo al final.",
+    variaveis: {
+      cliente: "Nombre del cliente",
+      loja: "Nombre de la tienda",
+      numero_os: "Número de la orden",
+      dispositivo: "Equipo",
+      link_avaliacao: "Enlace de reseñas",
+    },
+    restaurarPadrao: "Restaurar mensaje predeterminado",
+    previa: "Vista previa",
+    previaDescricao: "Con datos de ejemplo",
+    exemploCliente: "Juan Pérez",
+    exemploLoja: "Mi Tienda",
+    exemploDispositivo: "iPhone 13 Pro",
+    salvar: "Guardar",
+    salvando: "Guardando...",
+    salvoSucesso: "¡Configuración de reseñas guardada!",
+    salvoErro: "No se pudo guardar. Inténtelo de nuevo.",
+    salvoSemPermissao: "No se pudo guardar: su cuenta no tiene permiso para cambiar la configuración de la tienda.",
+    linkInvalidoSalvar: "Corrija el enlace antes de guardar.",
+    pedirTitulo: "Pedir reseña ahora",
+    pedirDescricao: "Órdenes entregadas en los últimos 30 días (hasta 50).",
+    buscar: "Buscar por cliente o número de orden",
+    semLinkDica: "Configure y guarde el enlace de reseñas arriba para pedir reseñas.",
+    vazio: "Ninguna orden entregada en los últimos 30 días.",
+    vazioBusca: "No se encontró ninguna orden para esta búsqueda.",
+    entregueEm: "Entregada el {{data}}",
+    semCliente: "Cliente no informado",
+    botaoPedir: "Pedir reseña",
+    copiarLink: "Copiar enlace",
+    copiarMensagem: "Copiar mensaje",
+    copiado: "¡Copiado!",
+    erroCopiar: "No se pudo copiar.",
+  },
+  dialogo: {
+    titulo: "Pida una reseña en Google",
+    descricao: "Mensaje listo con el enlace de reseñas de la orden",
+    enviar: "Enviar por WhatsApp",
+    semLink: "Configure el enlace de reseñas en Marketing antes de enviar.",
+  },
+};
+
+export default marketing;

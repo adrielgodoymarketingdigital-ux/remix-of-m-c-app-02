@@ -19,14 +19,19 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { cn } from "@/lib/utils";
 import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
 import { juntarDispositivos, type DispositivoAdicionalOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { lerConfigAvaliacaoGoogle, montarMensagemAvaliacao } from "@/lib/marketing/avaliacaoGoogle";
 
 interface DialogEnviarWhatsAppProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ordem: OrdemServico | null;
   loja?: ConfiguracaoLoja;
-  /** "finalizado": aberto sozinho ao finalizar a OS; só troca título e descrição. Sem ele, igual a antes. */
-  contexto?: "finalizado";
+  /**
+   * "finalizado": aberto sozinho ao finalizar a OS; só troca título e descrição.
+   * "avaliacao": pedido de avaliação no Google (Marketing): mensagem de avaliação,
+   * sem PDF nem link de acompanhamento. Sem contexto, igual a antes.
+   */
+  contexto?: "finalizado" | "avaliacao";
 }
 
 const MENSAGEM_FALLBACK = `Olá{{cliente}}! 👋
@@ -83,6 +88,10 @@ export const DialogEnviarWhatsApp = ({
   contexto,
 }: DialogEnviarWhatsAppProps) => {
   const { t } = useTranslation("servicos");
+  const { t: tMarketing } = useTranslation("marketing");
+  const ehAvaliacao = contexto === "avaliacao";
+  // Só o link validado (https + host do Google) entra na mensagem.
+  const linkAvaliacao = ehAvaliacao ? lerConfigAvaliacaoGoogle(loja?.mensagens_whatsapp_os).linkValido : null;
   const [telefone, setTelefone] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [gerando, setGerando] = useState(false);
@@ -130,12 +139,25 @@ export const DialogEnviarWhatsApp = ({
       } else {
         setTelefone("");
       }
-      const nomeStatus = statusList.find(s => s.slug === ordem.status)?.nome;
-      setMensagem(gerarMensagemPadrao(ordem, loja, nomeStatus, adicionais));
+      if (contexto === "avaliacao") {
+        const config = lerConfigAvaliacaoGoogle(loja?.mensagens_whatsapp_os);
+        setMensagem(config.linkValido
+          ? montarMensagemAvaliacao(config.mensagem, {
+              cliente: ordem.cliente?.nome,
+              loja: loja?.nome_loja || "Nossa Loja",
+              link: config.linkValido,
+              numeroOS: ordem.numero_os,
+              dispositivo: juntarDispositivos(`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, adicionais),
+            })
+          : "");
+      } else {
+        const nomeStatus = statusList.find(s => s.slug === ordem.status)?.nome;
+        setMensagem(gerarMensagemPadrao(ordem, loja, nomeStatus, adicionais));
+      }
       setPdfBaixado(false);
       setTipoPDF('completo');
     }
-  }, [open, ordem, loja, statusList, adicionais]);
+  }, [open, ordem, loja, statusList, adicionais, contexto]);
 
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTelefone(aplicarMascaraTelefone(e.target.value));
@@ -252,11 +274,20 @@ export const DialogEnviarWhatsApp = ({
       return;
     }
 
+    if (ehAvaliacao && !linkAvaliacao) {
+      toast.error(tMarketing("dialogo.semLink"));
+      return;
+    }
+    // Pedido de avaliação nunca sai sem o link (mesmo se apagado do texto).
+    const textoFinal = ehAvaliacao && linkAvaliacao && !mensagem.includes(linkAvaliacao)
+      ? `${mensagem.trimEnd()}\n${linkAvaliacao}`
+      : mensagem;
+
     const numeroFormatado = telefoneNumeros.startsWith("55")
       ? telefoneNumeros
       : `55${telefoneNumeros}`;
 
-    const mensagemCodificada = encodeURIComponent(mensagem);
+    const mensagemCodificada = encodeURIComponent(textoFinal);
     const urlWhatsApp = `https://wa.me/${numeroFormatado}?text=${mensagemCodificada}`;
 
     window.open(urlWhatsApp, "_blank");
@@ -386,7 +417,7 @@ export const DialogEnviarWhatsApp = ({
         className="!inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-[calc(100vw-1rem)] !h-[92dvh] !max-w-lg !rounded-2xl sm:!w-[calc(100vw-2rem)] sm:!h-auto sm:!max-h-[90dvh] sm:!max-w-lg sm:!rounded-2xl p-0 gap-0 overflow-hidden flex flex-col bg-background [&>.absolute.right-4.top-4]:hidden"
       >
         <DialogTitle className="sr-only">
-          {contexto === "finalizado" ? t("whatsappOS.finalizado.titulo") : "Enviar OS via WhatsApp"}
+          {ehAvaliacao ? tMarketing("dialogo.titulo") : contexto === "finalizado" ? t("whatsappOS.finalizado.titulo") : "Enviar OS via WhatsApp"}
         </DialogTitle>
 
         {/* Alça de arrastar */}
@@ -400,7 +431,14 @@ export const DialogEnviarWhatsApp = ({
             <FaWhatsapp className="h-5 w-5 text-[#25D366]" />
           </div>
           <div className="min-w-0 flex-1 pr-8">
-            {contexto === "finalizado" ? (
+            {ehAvaliacao ? (
+              <>
+                <h2 className="text-base font-bold leading-tight">{tMarketing("dialogo.titulo")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {tMarketing("dialogo.descricao")} <span className="font-semibold text-foreground">#{ordem.numero_os}</span>
+                </p>
+              </>
+            ) : contexto === "finalizado" ? (
               <>
                 <h2 className="text-base font-bold leading-tight">{t("whatsappOS.finalizado.titulo")}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -428,6 +466,7 @@ export const DialogEnviarWhatsApp = ({
 
         <div className="space-y-4 px-4 sm:px-5 pb-4 overflow-y-auto flex-1 min-h-0">
           {/* Seletor de tipo de PDF — só relevante se for enviar o PDF junto */}
+          {!ehAvaliacao && (
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">Anexar PDF? (opcional)</p>
             <div className="grid grid-cols-1 gap-2">
@@ -465,6 +504,7 @@ export const DialogEnviarWhatsApp = ({
               })}
             </div>
           </div>
+          )}
 
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">Número do WhatsApp</p>
@@ -496,16 +536,20 @@ export const DialogEnviarWhatsApp = ({
                 value={mensagem}
                 onChange={(e) => setMensagem(e.target.value)}
                 rows={6}
-                maxLength={500}
+                maxLength={ehAvaliacao ? 1000 : 500}
                 className="resize-none pb-6"
               />
               <span className="absolute bottom-2 right-3 text-[10px] text-muted-foreground/60 font-mono">
-                {mensagem.length}/500
+                {mensagem.length}/{ehAvaliacao ? 1000 : 500}
               </span>
             </div>
           </div>
 
-          {mobile && (
+          {ehAvaliacao && !linkAvaliacao && (
+            <p className="text-sm text-destructive">{tMarketing("dialogo.semLink")}</p>
+          )}
+
+          {mobile && !ehAvaliacao && (
             <div className="rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-muted-foreground space-y-2">
               <p className="font-medium text-foreground flex items-center gap-1.5">
                 <span className="h-5 w-5 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
@@ -526,7 +570,14 @@ export const DialogEnviarWhatsApp = ({
         </div>
 
         <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/10 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] space-y-2">
-          {mobile && suportaCompartilharArquivo && (
+          {ehAvaliacao && (
+            <Button onClick={handleEnviarSoMensagem} disabled={!linkAvaliacao} className="w-full gap-2">
+              <FaWhatsapp className="h-4 w-4" />
+              {tMarketing("dialogo.enviar")}
+            </Button>
+          )}
+
+          {!ehAvaliacao && mobile && suportaCompartilharArquivo && (
             <Button
               onClick={handleCompartilharDireto}
               disabled={compartilhando}
@@ -546,7 +597,7 @@ export const DialogEnviarWhatsApp = ({
             </Button>
           )}
 
-          {mobile ? (
+          {ehAvaliacao ? null : mobile ? (
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
@@ -608,7 +659,7 @@ export const DialogEnviarWhatsApp = ({
             </div>
           )}
 
-          {podeCompartilharLink && (
+          {!ehAvaliacao && podeCompartilharLink && (
             <Button
               variant="outline"
               onClick={handleEnviarLinkAcompanhamento}
@@ -629,7 +680,7 @@ export const DialogEnviarWhatsApp = ({
             </Button>
           )}
 
-          {mobile && !suportaCompartilharArquivo && (
+          {!ehAvaliacao && mobile && !suportaCompartilharArquivo && (
             <p className="text-[11px] text-muted-foreground text-center px-2">
               Para enviar o PDF manualmente: baixe o arquivo e anexe na conversa do WhatsApp.
             </p>
