@@ -38,6 +38,23 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
   if (isFuncionario && !carregandoFuncionario) {
     const moduloParaPermissao = modulo as any;
     if (temAcessoModuloFuncionario(moduloParaPermissao)) {
+      // Marketing: além da permissão, o plano do DONO precisa ter o módulo
+      // (para funcionário, useAssinatura já carrega a assinatura do dono).
+      // Os outros módulos seguem só pela permissão, como sempre.
+      if (modulo === "marketing" && !temAcessoModulo(modulo)) {
+        return (
+          <div className="container mx-auto py-12 px-4">
+            <Alert className="max-w-2xl mx-auto border-primary">
+              <Crown className="h-5 w-5 text-primary" />
+              <AlertTitle className="text-xl font-bold mb-2">{t("bloqueio.titulo")}</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>{t("bloqueio.descricao")}</p>
+                <p className="text-sm text-muted-foreground">{t("bloqueio.funcionario")}</p>
+              </AlertDescription>
+            </Alert>
+          </div>
+        );
+      }
       return <>{children}</>;
     }
     return (
