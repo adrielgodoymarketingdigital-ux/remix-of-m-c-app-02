@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { LIMITES_POR_PLANO } from "@/types/assinatura";
 import { useTranslation } from "react-i18next";
 import { destinoUpgradeProfissional } from "@/lib/marketing/upgradeProfissional";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 interface ComVerificacaoPlanoProps {
   children: ReactNode;
@@ -20,6 +21,10 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
   const { isFuncionario, carregando: carregandoFuncionario, temAcessoModulo: temAcessoModuloFuncionario } = useFuncionarioPermissoes();
   const navigate = useNavigate();
   const { t } = useTranslation("marketing");
+  // Marketing fica no menu de todos os planos: o bloqueio dele sai DENTRO do
+  // layout (menu e barra inferior), senão no PWA não há como voltar. Os outros
+  // módulos seguem com a tela solta de sempre.
+  const comLayout = (conteudo: JSX.Element) => (modulo === "marketing" ? <AppLayout>{conteudo}</AppLayout> : conteudo);
 
   // Ainda carregando dados de assinatura — mostrar brevemente
   // Limitado a 8s pelo watchdog do useAssinatura; não bloquear indefinidamente
@@ -42,7 +47,7 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
       // (para funcionário, useAssinatura já carrega a assinatura do dono).
       // Os outros módulos seguem só pela permissão, como sempre.
       if (modulo === "marketing" && !temAcessoModulo(modulo)) {
-        return (
+        return comLayout(
           <div className="container mx-auto py-12 px-4">
             <Alert className="max-w-2xl mx-auto border-primary">
               <Crown className="h-5 w-5 text-primary" />
@@ -52,7 +57,7 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
                 <p className="text-sm text-muted-foreground">{t("bloqueio.funcionario")}</p>
               </AlertDescription>
             </Alert>
-          </div>
+          </div>,
         );
       }
       return <>{children}</>;
@@ -100,7 +105,7 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
   if (!temAcessoModulo(modulo)) {
     // Já foi pagante e o plano venceu: qualquer módulo bloqueado pede para renovar
     if (planoVencido) {
-      return (
+      return comLayout(
         <div className="container mx-auto py-12 px-4">
           <Alert className="max-w-2xl mx-auto border-destructive/40">
             <AlertCircle className="h-5 w-5 text-destructive" />
@@ -113,12 +118,12 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
               </Button>
             </AlertDescription>
           </Alert>
-        </div>
+        </div>,
       );
     }
 
     const personalizado = BLOQUEIOS_PERSONALIZADOS[modulo];
-    return (
+    return comLayout(
       <div className="container mx-auto py-12 px-4">
         <Alert className="max-w-2xl mx-auto border-primary">
           <Crown className="h-5 w-5 text-primary" />
@@ -147,7 +152,7 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
             </Button>
           </AlertDescription>
         </Alert>
-      </div>
+      </div>,
     );
   }
 
