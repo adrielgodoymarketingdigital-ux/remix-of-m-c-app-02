@@ -2,6 +2,15 @@ import jsPDF from "jspdf";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
 import { adicionarRodapePDF, formatCurrencyPDF } from "@/lib/pdfHelpers";
 import { CAMPOS_LOJA_PDF_TERMICO, CAMPOS_LOJA_RECIBO_DISPOSITIVO, ESPACO_LOGO_DADOS_MM, encaixarLogo, linhasDadosLoja } from "@/lib/recibo/cabecalhoRecibo";
+import {
+  AREA_CONTEUDO_PDF_MM,
+  ESCALAS_PDF_A4,
+  LIMITE_UMA_FOLHA_PDF_MM,
+  NIVEL_MAXIMO_COMPACTACAO,
+  decidirCompactacao,
+  linhasDoBlocoFinal,
+  type NivelCompactacao,
+} from "@/lib/recibo/compactacaoReciboVendaA4";
 
 export interface DispositivoPDFReciboVenda {
   marca?: string;
@@ -55,6 +64,30 @@ const LARGURA_PAGINA_MM: Record<FormatoPDFReciboVenda, number> = {
 interface OpcoesDesenho {
   margin: number;
   isThermal: boolean;
+  /** Só A4: nível de compactação (0 = o documento de sempre). */
+  nivel?: NivelCompactacao;
+  /** Só A4: medição num doc descartável e alto — nunca quebra página nem desenha o rodapé. */
+  medir?: boolean;
+  /**
+   * Só A4: a medição provou que o documento cabe numa folha — nada quebra
+   * página (as folgas pedidas por verificarNovaPagina são maiores que o que
+   * cada bloco ocupa e mandariam as assinaturas sozinhas para a folha 2).
+   */
+  umaFolha?: boolean;
+  /**
+   * Só A4, nível 0, quando nem compactado cabe numa folha: altura (mm) de tudo
+   * o que vem depois do termo do último aparelho (medida no nível 0). O fim
+   * desse termo vai para a folha seguinte junto com as assinaturas quando não
+   * cabe na folha atual — a folha das assinaturas nunca fica só com elas.
+   */
+  alturaCaudaMm?: number;
+}
+
+interface ResultadoDesenho {
+  /** Y logo depois do último elemento desenhado. */
+  y: number;
+  /** Y logo depois da última linha do termo do último aparelho (antes do espaço que vem depois). */
+  yFimTermo: number;
 }
 
 /**
@@ -64,16 +97,21 @@ interface OpcoesDesenho {
  * descartável, sem página final) quanto pro desenho definitivo (A4 e
  * térmico).
  */
-function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesDesenho): number {
+function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesDesenho): ResultadoDesenho {
   const { margin, isThermal } = opts;
+  // Medidas do A4 no nível pedido (nível 0 = os números de sempre). O térmico não usa.
+  const e = ESCALAS_PDF_A4[opts.nivel ?? 0];
   const pageWidth = doc.internal.pageSize.getWidth();
   const larguraUtil = pageWidth - margin * 2;
   let y = margin;
+  let yFimTermo = y;
+  // Depois que o fim do termo + assinaturas ganhou lugar garantido numa folha, nada mais quebra página.
+  let finalReservado = false;
 
   // Térmico é bobina contínua — a página já foi dimensionada pra caber tudo
-  // (ver gerarReciboVendaPDF), então nunca quebra página aqui.
+  // (ver gerarReciboVendaPDF), então nunca quebra página aqui. A medição do A4 também não.
   const verificarNovaPagina = (espaco = 20) => {
-    if (isThermal) return;
+    if (isThermal || opts.medir || opts.umaFolha || finalReservado) return;
     if (y + espaco > 280) {
       doc.addPage();
       y = margin;
@@ -210,7 +248,7 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
     doc.text(`Data da venda: ${dados.dataVenda}`, margin + 3, faixaTextoY);
     doc.text(`Pagamento: ${dados.formaPagamentoLabel}`, pageWidth / 2, faixaTextoY, { align: "center" });
     doc.text(`Total: ${formatCurrencyPDF(dados.valorTotal)}`, pageWidth - margin - 3, faixaTextoY, { align: "right" });
-    y += faixaAltura + 6;
+    y += faixaAltura + e.aposFaixa;
   }
 
   // ===== helpers de seção =====
@@ -223,19 +261,19 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COR_LABEL);
     doc.text(texto.toUpperCase(), margin + 3, y + 4.2);
-    y += 9;
+    y += isThermal ? 9 : e.avancoTitulo;
   };
 
   // Sempre com wrap — em papel térmico (52-76mm úteis) uma linha de campo
   // "Cor / Capacidade / Condição: ..." estoura a largura fácil.
   const linhaTexto = (texto: string) => {
-    doc.setFontSize(isThermal ? 7.5 : 9);
+    doc.setFontSize(isThermal ? 7.5 : e.fonteLinhaPt);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(40, 40, 40);
     const linhas = doc.splitTextToSize(texto, larguraUtil - 6);
     linhas.forEach((linha: string) => {
       doc.text(linha, margin + 3, y);
-      y += isThermal ? 4 : 5;
+      y += isThermal ? 4 : e.passoLinha;
     });
   };
 
@@ -243,7 +281,7 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
   linhaTexto(`Nome: ${dados.clienteNome || "—"}`);
   if (dados.clienteCpf) linhaTexto(`CPF: ${dados.clienteCpf}`);
   if (dados.clienteTelefone) linhaTexto(`Telefone: ${dados.clienteTelefone}`);
-  y += 3;
+  y += isThermal ? 3 : e.aposSecao;
 
   const multiplos = dados.dispositivos.length > 1;
 
@@ -258,8 +296,36 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
     if (detalhes) linhaTexto(`Cor / Capacidade / Condição: ${detalhes}`);
     linhaTexto(`Valor: ${formatCurrencyPDF(disp.total)}`);
     if (disp.garantiaLabel) linhaTexto(`Garantia: ${disp.garantiaLabel}`);
-    y += 3;
+    y += isThermal ? 3 : e.aposSecao;
 
+    // Fim do termo do ÚLTIMO aparelho junto das assinaturas (só quando nem
+    // compactado cabe numa folha): quantas linhas do fim vão juntas e quanto
+    // ocupam. Termo inteiro junto = o cabeçalho do termo vai junto também.
+    const ultimo = i === dados.dispositivos.length - 1;
+    const passoTermo = isThermal ? 3.4 : e.passoTermo;
+    doc.setFontSize(isThermal ? 6.5 : e.fonteTermoPt);
+    const linhas: string[] = doc.splitTextToSize(disp.textoTermo, larguraUtil - 4);
+    const cauda = ultimo && !isThermal && !opts.medir ? opts.alturaCaudaMm : undefined;
+    const alturaCabecalhoTermo = isThermal ? 9 : e.avancoTitulo;
+    let inicioJunto = -1;
+    let alturaJunto = 0;
+    if (cauda !== undefined && cauda > 0) {
+      const cabem = Math.floor((AREA_CONTEUDO_PDF_MM - cauda - alturaCabecalhoTermo) / passoTermo);
+      const n = linhasDoBlocoFinal(linhas, cabem);
+      if (n > 0) {
+        inicioJunto = linhas.length - n;
+        alturaJunto = n * passoTermo + cauda + (inicioJunto === 0 ? alturaCabecalhoTermo : 0);
+      }
+    }
+    const reservarFinal = () => {
+      if (y + alturaJunto > 280) {
+        doc.addPage();
+        y = margin;
+      }
+      finalReservado = true;
+    };
+
+    if (inicioJunto === 0) reservarFinal();
     verificarNovaPagina(20);
     // Cabeçalho do termo em navy (igual .termo-header no HTML), não o cinza
     // padrão das outras seções — é o bloco mais "de marca" do documento.
@@ -273,18 +339,19 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
       margin + 3,
       y + 4.2
     );
-    y += 9;
+    y += alturaCabecalhoTermo;
 
-    doc.setFontSize(isThermal ? 6.5 : 8);
+    doc.setFontSize(isThermal ? 6.5 : e.fonteTermoPt);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60, 60, 60);
-    const linhas = doc.splitTextToSize(disp.textoTermo, larguraUtil - 4);
-    linhas.forEach((linha: string) => {
+    linhas.forEach((linha: string, k: number) => {
+      if (k === inicioJunto && k > 0) reservarFinal();
       verificarNovaPagina(5);
       doc.text(linha, margin + 2, y);
-      y += isThermal ? 3.4 : 4;
+      y += passoTermo;
     });
-    y += 6;
+    yFimTermo = y;
+    y += isThermal ? 6 : e.aposTermo;
   });
 
   if (dados.modo !== "garantia") {
@@ -293,7 +360,7 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COR_HEADER);
     doc.text(`VALOR TOTAL: ${formatCurrencyPDF(dados.valorTotal)}`, margin, y);
-    y += isThermal ? 7 : 10;
+    y += isThermal ? 7 : e.aposTotal;
 
     if (dados.trocaLinhas?.length) {
       const [titulo, ...resto] = dados.trocaLinhas;
@@ -301,13 +368,13 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
       tituloSecao(titulo);
       // As fontes padrão do jsPDF não têm "−" (U+2212): hífen comum no PDF.
       resto.forEach((l) => linhaTexto(l.replace(/\u2212/g, "-")));
-      y += 3;
+      y += isThermal ? 3 : e.aposSecao;
     }
   }
 
   // ===== ASSINATURAS =====
   verificarNovaPagina(isThermal ? 20 : 30);
-  y += isThermal ? 4 : 10;
+  y += isThermal ? 4 : e.antesAssinaturas;
   doc.setDrawColor(80, 80, 80);
   doc.setLineWidth(0.3);
   if (isThermal) {
@@ -339,11 +406,39 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
     const dataGerado = `Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
     doc.text(dataGerado, pageWidth / 2, y, { align: "center" });
     y += 4;
-  } else {
+  } else if (!opts.medir) {
     adicionarRodapePDF(doc, dados.configLoja);
   }
 
-  return y;
+  return { y, yFimTermo };
+}
+
+/**
+ * A4 numa folha só: mede o documento em cada nível de compactação num doc
+ * descartável e alto (sem quebra de página) e fica com o primeiro que cabe
+ * (lib/recibo/compactacaoReciboVendaA4). Nem o nível máximo cabe: nível 0,
+ * com o fim do termo do último aparelho junto das assinaturas. Erro na
+ * medição = documento de sempre.
+ */
+function opcoesA4(dados: DadosReciboVendaPDF, margin: number): Pick<OpcoesDesenho, "nivel" | "umaFolha" | "alturaCaudaMm"> {
+  try {
+    const medidas: ResultadoDesenho[] = [];
+    for (let nivel = 0; nivel <= NIVEL_MAXIMO_COMPACTACAO; nivel++) {
+      const docMedicao = new jsPDF({ unit: "mm", format: [LARGURA_PAGINA_MM.a4, 2000] });
+      medidas.push(desenharDocumento(docMedicao, dados, { margin, isThermal: false, nivel: nivel as NivelCompactacao, medir: true }));
+    }
+    const caudaMm = medidas[0].y - medidas[0].yFimTermo;
+    const decisao = decidirCompactacao(
+      // Altura em mm a partir do topo da folha: o Y final já inclui a margem de cima.
+      { alturasPorNivel: medidas.map((m) => m.y), alturaFinalMm: dados.dispositivos.length ? caudaMm : null },
+      LIMITE_UMA_FOLHA_PDF_MM,
+      AREA_CONTEUDO_PDF_MM,
+    );
+    const umaFolha = decisao.motivo === "cabe" || decisao.motivo === "compactado";
+    return { nivel: decisao.nivel, umaFolha, alturaCaudaMm: decisao.agruparFinal ? caudaMm : undefined };
+  } catch {
+    return { nivel: 0 };
+  }
 }
 
 /**
@@ -366,13 +461,14 @@ export async function gerarReciboVendaPDF(dados: DadosReciboVendaPDF): Promise<B
   const margin = isThermal ? 3 : 15;
 
   if (!isThermal) {
+    const ajuste = opcoesA4(dados, margin);
     const doc = new jsPDF();
-    desenharDocumento(doc, dados, { margin, isThermal: false });
+    desenharDocumento(doc, dados, { margin, isThermal: false, ...ajuste });
     return doc.output("blob");
   }
 
   const docMedicao = new jsPDF({ unit: "mm", format: [larguraPagina, 1000] });
-  const alturaConteudo = desenharDocumento(docMedicao, dados, { margin, isThermal: true });
+  const alturaConteudo = desenharDocumento(docMedicao, dados, { margin, isThermal: true }).y;
   const alturaFinal = Math.max(alturaConteudo + margin, 40);
 
   const doc = new jsPDF({ unit: "mm", format: [larguraPagina, alturaFinal] });
