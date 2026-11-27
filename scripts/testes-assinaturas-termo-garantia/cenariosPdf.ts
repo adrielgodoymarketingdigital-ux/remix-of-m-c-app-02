@@ -74,8 +74,7 @@ export function montarCenario(termo: TamanhoTermo, aparelhos: 1 | 2 | 3, modo: "
     dados: {
       modo,
       formato: "a4",
-      // deno-lint-ignore no-explicit-any
-      configLoja: LOJA as any,
+      configLoja: LOJA as unknown as DadosReciboVendaPDF["configLoja"],
       logoBase64: pngDataUrl(260, 90, [20, 40, 120]),
       dataVenda: "20/11/2026 às 14:30",
       formaPagamentoLabel: "Cartão de Crédito",

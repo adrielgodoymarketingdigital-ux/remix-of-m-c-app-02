@@ -27,15 +27,14 @@ class JsPDFInstrumentado extends Base {
     super(...args);
     const registro: DocRegistrado = { alturaPaginaMm: this.internal.pageSize.getHeight(), textos: [] };
     docsCriados.push(registro);
-    const original = this.text.bind(this);
-    // deno-lint-ignore no-explicit-any
-    (this as any).text = (texto: string | string[], x: number, y: number, ...resto: unknown[]) => {
+    type Texto = (texto: string | string[], x: number, y: number, ...resto: unknown[]) => unknown;
+    const original = this.text.bind(this) as unknown as Texto;
+    (this as unknown as { text: Texto }).text = (texto, x, y, ...resto) => {
       const lista = Array.isArray(texto) ? texto : [texto];
       for (const t of lista) {
         registro.textos.push({ pagina: this.internal.getCurrentPageInfo().pageNumber, x, y, fontePt: this.getFontSize(), texto: String(t) });
       }
-      // deno-lint-ignore no-explicit-any
-      return (original as any)(texto, x, y, ...resto);
+      return original(texto, x, y, ...resto);
     };
   }
 }
