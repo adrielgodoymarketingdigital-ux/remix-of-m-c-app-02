@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "@/": "../../src/",
+    "jspdf": "./jspdfInstrumentado.ts"
+  },
+  "nodeModulesDir": "manual",
+  "unstable": [
+    "sloppy-imports"
+  ],
+  "lock": false
+}
