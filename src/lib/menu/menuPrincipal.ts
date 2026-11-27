@@ -24,7 +24,7 @@ export interface ItemMenu {
   /** Chave de PermissoesModulos (funcionário) e, quando existir, de LimitesPlano.modulos (dono). */
   modulo: string;
   items?: SubitemMenu[];
-  /** Etiqueta "Novo" até este dia, inclusive ("AAAA-MM-DD", dia local), enquanto o usuário não abrir o item. */
+  /** Etiqueta "Novo" até este dia, inclusive ("AAAA-MM-DD", dia local). Some sozinha no dia seguinte. */
   novoAte?: string;
 }
 
@@ -172,11 +172,11 @@ export function urlsVisiveis(itens: ItemMenu[]): string[] {
 const DIA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Mostra a etiqueta "Novo" só se o item tem novoAte, hoje <= novoAte (os dois
- * "AAAA-MM-DD") e o usuário ainda não abriu o item neste aparelho.
+ * Mostra a etiqueta "Novo" só se o item tem novoAte e hoje <= novoAte (os dois
+ * "AAAA-MM-DD"). Depende só da data: abrir o item não faz a etiqueta sumir.
  */
-export function etiquetaNovoVisivel(e: { novoAte?: string | null; hoje: string; jaAbriu: boolean }): boolean {
-  if (!e.novoAte || e.jaAbriu) return false;
+export function etiquetaNovoVisivel(e: { novoAte?: string | null; hoje: string }): boolean {
+  if (!e.novoAte) return false;
   if (!DIA_ISO.test(e.novoAte) || !DIA_ISO.test(e.hoje)) return false;
   return e.hoje <= e.novoAte;
 }
@@ -185,11 +185,6 @@ export function etiquetaNovoVisivel(e: { novoAte?: string | null; hoje: string; 
 export function diaLocalISO(d: Date): string {
   const dois = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}`;
-}
-
-/** Chave do localStorage (por aparelho) que marca o item como aberto: "/marketing" -> "mecapp_menu_novo_visto_marketing". */
-export function chaveNovoVisto(url: string): string {
-  return `mecapp_menu_novo_visto_${url.replace(/^\/+/, "").replace(/\//g, "_")}`;
 }
 
 /**
