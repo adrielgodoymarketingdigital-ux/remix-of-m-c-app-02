@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,6 +19,16 @@ interface ComboboxComTextoLivreProps {
   onChange: (value: string) => void;
   className?: string;
   erro?: boolean;
+  /**
+   * Opcional: mostra "+ Adicionar novo" na lista, que abre um campo curto para
+   * digitar o nome. Recebe o nome digitado e devolve o nome a selecionar
+   * (o criado ou um que já existia) ou null para manter o campo aberto
+   * (inválido ou falha ao salvar). Sem esta prop o componente é o de sempre.
+   */
+  onAdicionarNovo?: (nome: string) => Promise<string | null>;
+  rotuloAdicionar?: string;
+  /** Sem onAdicionarNovo: dica desabilitada no lugar do item (ex.: "Escolha a marca primeiro"). */
+  dicaAdicionarIndisponivel?: string;
 }
 
 /**
@@ -38,11 +49,20 @@ export function ComboboxComTextoLivre({
   onChange,
   className,
   erro,
+  onAdicionarNovo,
+  rotuloAdicionar,
+  dicaAdicionarIndisponivel,
 }: ComboboxComTextoLivreProps) {
+  const { t } = useTranslation("servicos");
   const todasOpcoes = opcoesCustom.length > 0 ? [...opcoes, ...opcoesCustom] : opcoes;
   const valorBateComCatalogo = value === "" || todasOpcoes.includes(value);
   const [modoTextoLivre, setModoTextoLivre] = useState(!valorBateComCatalogo);
   const [open, setOpen] = useState(false);
+  // "+ Adicionar novo": busca digitada (vira o nome sugerido), campo aberto e salvando.
+  const [busca, setBusca] = useState("");
+  const [adicionando, setAdicionando] = useState(false);
+  const [nomeNovo, setNomeNovo] = useState("");
+  const [salvando, setSalvando] = useState(false);
 
   // Chave estável com o conteúdo do catálogo (não a referência das arrays).
   // O componente pai recria `opcoes`/`opcoesCustom` a cada render (.map/.filter),
@@ -82,8 +102,37 @@ export function ComboboxComTextoLivre({
     setOpen(false);
   };
 
+  const handleOpenChange = (aberto: boolean) => {
+    if (!aberto && salvando) return;
+    setOpen(aberto);
+    if (!aberto) {
+      setAdicionando(false);
+      setBusca("");
+    }
+  };
+
+  const handleSalvarNovo = async () => {
+    if (!onAdicionarNovo || salvando || !nomeNovo.trim()) return;
+    setSalvando(true);
+    try {
+      const nome = await onAdicionarNovo(nomeNovo);
+      if (nome) {
+        onChange(nome);
+        setAdicionando(false);
+        setNomeNovo("");
+        setBusca("");
+        setOpen(false);
+      }
+    } catch (error) {
+      // Quem chama já avisa o erro; o campo fica aberto com o que foi digitado.
+      console.error("Erro ao adicionar opção nova:", error);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           id={id}
@@ -103,8 +152,38 @@ export function ComboboxComTextoLivre({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0" align="start">
+        {adicionando ? (
+          <div className="space-y-2 p-2">
+            <Input
+              autoFocus
+              value={nomeNovo}
+              onChange={(e) => setNomeNovo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void handleSalvarNovo();
+                }
+              }}
+              placeholder={t("novoModeloOS.campoPlaceholder")}
+              disabled={salvando}
+              className="h-9"
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" size="sm" disabled={salvando} onClick={() => setAdicionando(false)}>
+                {t("novoModeloOS.cancelar")}
+              </Button>
+              <Button type="button" size="sm" disabled={salvando || !nomeNovo.trim()} onClick={() => void handleSalvarNovo()}>
+                {salvando ? t("novoModeloOS.salvando") : t("novoModeloOS.salvar")}
+              </Button>
+            </div>
+          </div>
+        ) : (
         <Command>
-          <CommandInput placeholder={buscaPlaceholder ?? "Buscar..."} />
+          <CommandInput
+            placeholder={buscaPlaceholder ?? "Buscar..."}
+            {...(onAdicionarNovo ? { value: busca, onValueChange: setBusca } : {})}
+          />
           <CommandList>
             <CommandEmpty>Nenhuma opção encontrada.</CommandEmpty>
             <CommandGroup>
@@ -116,6 +195,25 @@ export function ComboboxComTextoLivre({
                 <Check className="mr-2 h-4 w-4 opacity-0" />
                 {opcaoOutra}
               </CommandItem>
+              {onAdicionarNovo ? (
+                <CommandItem
+                  forceMount
+                  value={`__adicionar_novo__ ${rotuloAdicionar ?? ""}`}
+                  onSelect={() => {
+                    setNomeNovo(busca);
+                    setAdicionando(true);
+                  }}
+                  className="font-medium text-primary"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {rotuloAdicionar ?? t("novoModeloOS.adicionar")}
+                </CommandItem>
+              ) : dicaAdicionarIndisponivel ? (
+                <CommandItem disabled value={`__adicionar_indisponivel__ ${dicaAdicionarIndisponivel}`} className="text-xs text-muted-foreground">
+                  <Plus className="mr-2 h-4 w-4 opacity-50" />
+                  {dicaAdicionarIndisponivel}
+                </CommandItem>
+              ) : null}
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading={opcoesCustom.length > 0 ? "Cadastradas" : undefined}>
@@ -138,6 +236,7 @@ export function ComboboxComTextoLivre({
             )}
           </CommandList>
         </Command>
+        )}
       </PopoverContent>
     </Popover>
   );

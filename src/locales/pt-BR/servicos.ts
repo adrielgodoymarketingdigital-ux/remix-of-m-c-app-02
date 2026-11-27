@@ -113,6 +113,21 @@ const servicos = {
       descricao: "A mensagem abre no WhatsApp pronta; é só tocar em enviar. OS",
     },
   },
+  // "Adicionar novo modelo" (com ícone +) no seletor de Modelo da criação de OS (assistente,
+  // OS simplificada e aparelho adicional): grava no catálogo próprio da loja.
+  novoModeloOS: {
+    adicionar: "Adicionar novo modelo",
+    escolhaMarcaPrimeiro: "Escolha a marca primeiro",
+    campoPlaceholder: "Nome do modelo",
+    salvar: "Salvar",
+    salvando: "Salvando…",
+    cancelar: "Cancelar",
+    vazio: "Digite o nome do modelo.",
+    curto: "O nome precisa ter pelo menos {{min}} caracteres.",
+    longo: "O nome pode ter no máximo {{max}} caracteres.",
+    duplicado: "Esse modelo já existe, selecionei para você",
+    erroSalvar: "Erro ao cadastrar",
+  },
 } as const;
 
 export default servicos;

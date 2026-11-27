@@ -103,6 +103,19 @@ const servicos: Traducao<typeof servicosPtBR> = {
       descricao: "El mensaje se abre listo en WhatsApp; solo toque enviar. OS",
     },
   },
+  novoModeloOS: {
+    adicionar: "Agregar nuevo modelo",
+    escolhaMarcaPrimeiro: "Elija la marca primero",
+    campoPlaceholder: "Nombre del modelo",
+    salvar: "Guardar",
+    salvando: "Guardando…",
+    cancelar: "Cancelar",
+    vazio: "Escriba el nombre del modelo.",
+    curto: "El nombre debe tener al menos {{min}} caracteres.",
+    longo: "El nombre puede tener como máximo {{max}} caracteres.",
+    duplicado: "Ese modelo ya existe; se seleccionó automáticamente",
+    erroSalvar: "Error al registrar",
+  },
 };
 
 export default servicos;
