@@ -2,14 +2,25 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
 import { mesclarLayoutOS } from "@/lib/ordemServico/mesclarLayoutOS";
+import { mesclarMensagensWhatsAppOS } from "@/lib/configuracaoLoja/mesclarMensagensWhatsAppOS";
 import { validarConfiguracaoParaRecibos } from "@/lib/configuracaoLoja/validarParaRecibos";
 
 // layout_os_config é compartilhado por várias telas (layout, etiqueta, técnico
 // obrigatório): grava sempre mesclado sobre o valor recém-lido da linha, para uma
-// tela não apagar as chaves da outra. Os demais campos seguem como vieram.
-function dadosParaGravar(dados: Partial<ConfiguracaoLoja>, layoutNoBanco: unknown): Record<string, unknown> {
-  if (!dados.layout_os_config) return dados as Record<string, unknown>;
-  return { ...dados, layout_os_config: mesclarLayoutOS(layoutNoBanco, dados.layout_os_config) };
+// tela não apagar as chaves da outra. mensagens_whatsapp_os idem (modelos por
+// status, os_tracking e marketing_*). Os demais campos seguem como vieram.
+function dadosParaGravar(
+  dados: Partial<ConfiguracaoLoja>,
+  linhaNoBanco: { layout_os_config?: unknown; mensagens_whatsapp_os?: unknown },
+): Record<string, unknown> {
+  const gravar: Record<string, unknown> = { ...dados };
+  if (dados.layout_os_config) {
+    gravar.layout_os_config = mesclarLayoutOS(linhaNoBanco.layout_os_config, dados.layout_os_config);
+  }
+  if (dados.mensagens_whatsapp_os) {
+    gravar.mensagens_whatsapp_os = mesclarMensagensWhatsAppOS(linhaNoBanco.mensagens_whatsapp_os, dados.mensagens_whatsapp_os);
+  }
+  return gravar;
 }
 
 // Regra pura (sem React): mora em lib para os testes em Deno usarem a mesma função.
@@ -287,7 +298,7 @@ export function useConfiguracaoLoja(empresaId?: string | null) {
 
         const { error: errorUpdate } = await supabase
           .from("configuracoes_loja")
-          .update(dadosParaGravar(dados, novaConfig.layout_os_config))
+          .update(dadosParaGravar(dados, novaConfig))
           .eq("id", novaConfig.id);
 
         if (errorUpdate) {
@@ -298,7 +309,7 @@ export function useConfiguracaoLoja(empresaId?: string | null) {
         // Atualizar configuração existente
         const { error } = await supabase
           .from("configuracoes_loja")
-          .update(dadosParaGravar(dados, configAtual.layout_os_config))
+          .update(dadosParaGravar(dados, configAtual))
           .eq("id", configAtual.id);
 
         if (error) {
