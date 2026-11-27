@@ -1,22 +1,40 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // =====================================================================
-// ⚠️  DATA LIMITE DO BANNER "NF-e EM BREVE"  ⚠️
-// Depois deste instante o banner some sozinho para todo mundo.
-// Para estender a divulgação, altere a data abaixo.
-// Para remover de vez: apague este arquivo, as imagens em
-// public/banners/nfe-*.webp e o <BannerNfeEmBreve /> do Dashboard.
+// Carrossel de novidades do Dashboard (só o dono da loja vê; todos os planos).
+// Cada slide da lista SLIDES tem uma data limite própria (campo limite):
+// depois dela o slide some sozinho para todo mundo; null = sem limite.
+// Para remover UM slide: apague a linha dele em SLIDES, a constante de
+// data limite dele (se houver) e as imagens dele em public/banners/.
+// Os outros slides continuam. Com um slide só, aparece sem carrossel.
+// Para remover o banner inteiro: apague este arquivo, as imagens em
+// public/banners/ e o <BannerNfeEmBreve /> do Dashboard.
 // =====================================================================
+
+// ⚠️  DATA LIMITE DO BANNER "NF-e EM BREVE"  ⚠️
+// Para estender a divulgação, altere a data abaixo.
+// Para remover: linha "nfe" em SLIDES + imagens public/banners/nfe-*.webp.
 export const BANNER_NFE_DATA_LIMITE = new Date("2026-12-14T23:59:59-03:00");
 
 // Data limite do banner "Disponível nas lojas oficiais".
 // null = sem limite. Para definir: new Date("2027-01-31T23:59:59-03:00") (horário de Brasília).
 export const BANNER_LOJAS_DATA_LIMITE: Date | null = null;
 
-const STORAGE_KEY = "banner_nfe_fechado_ate";
+// Data limite do banner "Novo menu Marketing" (1º slide, leva a /marketing).
+// null = sem limite. Para encerrar numa data: new Date("2027-01-31T23:59:59-03:00")
+// (horário de Brasília); para estender, troque a data (ou volte para null).
+// Para remover: linha "marketing" em SLIDES + imagens public/banners/marketing-*.webp.
+export const BANNER_MARKETING_DATA_LIMITE: Date | null = null;
+
+// Fechar esconde o carrossel inteiro por 7 dias neste aparelho.
+// A chave mudou (antes "banner_nfe_fechado_ate") quando entrou o banner do
+// Marketing, para quem tinha fechado o carrossel ver a novidade. Ao incluir
+// outra novidade que todos precisem ver, suba a versão (_v3, ...).
+const STORAGE_KEY = "banner_dashboard_fechado_ate_v2";
 const DIAS_OCULTO_AO_FECHAR = 7;
 const INTERVALO_TROCA_MS = 5000;
 // A partir daqui usa a imagem de desktop (3:1); abaixo, a de celular (2:1).
@@ -27,9 +45,13 @@ interface Slide {
   desktop: string;
   alt: string;
   limite: Date | null;
+  /** Rota interna aberta ao clicar no banner (sem href, o banner não é clicável). */
+  href?: string;
 }
 
+// A ordem aqui é a ordem do carrossel: a primeira imagem carrega antes das outras.
 const SLIDES: Slide[] = [
+  { celular: "/banners/marketing-celular.webp", desktop: "/banners/marketing-desktop-3x1.webp", alt: "Novo menu Marketing: avaliações no Google, disponível a partir do Plano Profissional", limite: BANNER_MARKETING_DATA_LIMITE, href: "/marketing" },
   { celular: "/banners/nfe-celular.webp", desktop: "/banners/nfe-desktop-3x1.webp", alt: "Em breve: emissão de notas fiscais no sistema", limite: BANNER_NFE_DATA_LIMITE },
   { celular: "/banners/lojas-celular.webp", desktop: "/banners/lojas-desktop-3x1.webp", alt: "Em breve: aplicativo disponível nas lojas oficiais", limite: BANNER_LOJAS_DATA_LIMITE },
 ];
@@ -58,16 +80,21 @@ function useMidia(consulta: string): boolean {
   return bate;
 }
 
-/** Imagem de um banner: a <picture> escolhe celular (2:1) ou desktop (3:1) pela largura da tela. */
-function ImagemBanner({ slide, onLoad }: { slide: Slide; onLoad?: () => void }) {
-  return (
+/**
+ * Imagem de um banner: a <picture> escolhe celular (2:1) ou desktop (3:1) pela largura da tela.
+ * A primeira imagem visível não é lazy (está no topo da tela); as demais são.
+ * Com href, o banner vira link interno. Arrastar o carrossel não abre o link:
+ * o Embla cancela o clique que vem depois de um arrasto.
+ */
+function ImagemBanner({ slide, onLoad, primeira = false }: { slide: Slide; onLoad?: () => void; primeira?: boolean }) {
+  const imagem = (
     <picture>
       <source media={MIDIA_DESKTOP} srcSet={slide.desktop} width={2000} height={667} />
       <img
         src={slide.celular}
         width={1774}
         height={887}
-        loading="lazy"
+        loading={primeira ? "eager" : "lazy"}
         decoding="async"
         alt={slide.alt}
         draggable={false}
@@ -75,6 +102,16 @@ function ImagemBanner({ slide, onLoad }: { slide: Slide; onLoad?: () => void }) 
         className="block h-full w-full select-none object-cover"
       />
     </picture>
+  );
+  if (!slide.href) return imagem;
+  return (
+    <Link
+      to={slide.href}
+      draggable={false}
+      className="block h-full w-full rounded-2xl focus-visible:outline focus-visible:outline-[3px] focus-visible:-outline-offset-4 focus-visible:outline-white"
+    >
+      {imagem}
+    </Link>
   );
 }
 
@@ -109,7 +146,7 @@ export function BannerNfeEmBreve({ visivel }: BannerNfeEmBreveProps) {
     <div className={CAIXA}>
       {slides.length === 1 ? (
         <div className={PROPORCAO}>
-          <ImagemBanner slide={slides[0]} />
+          <ImagemBanner slide={slides[0]} primeira />
         </div>
       ) : (
         <CarrosselBanners slides={slides} />
@@ -196,7 +233,7 @@ function CarrosselBanners({ slides }: { slides: Slide[] }) {
               className="h-full min-w-0 shrink-0 grow-0 basis-full"
             >
               {i === 0 || primeiraCarregou ? (
-                <ImagemBanner slide={s} onLoad={i === 0 ? () => setPrimeiraCarregou(true) : undefined} />
+                <ImagemBanner slide={s} primeira={i === 0} onLoad={i === 0 ? () => setPrimeiraCarregou(true) : undefined} />
               ) : (
                 <div className="h-full w-full bg-[#0B1429]" aria-hidden="true" />
               )}
