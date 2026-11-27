@@ -86,6 +86,8 @@ const OnboardingObrigatorio = lazy(() => import("./pages/OnboardingObrigatorio")
 const InstalarApp = lazy(() => import("./pages/InstalarApp"));
 const Tutoriais = lazy(() => import("./pages/Tutoriais"));
 const Equipe = lazy(() => import("./pages/Equipe"));
+// Marketing da loja (/marketing). O de admin é /admin/marketing (AdminMarketing).
+const Marketing = lazy(() => import("./pages/Marketing"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 const Fidelidade = lazy(() => import("./pages/Fidelidade"));
 const MultiEmpresas = lazy(() => import("./pages/MultiEmpresas"));
@@ -471,6 +473,13 @@ function AppRoutes() {
             <ProtectedAppRoute>
               <ComVerificacaoFuncionario modulo="equipe">
                 <Equipe />
+              </ComVerificacaoFuncionario>
+            </ProtectedAppRoute>
+          } />
+          <Route path="/marketing" element={
+            <ProtectedAppRoute>
+              <ComVerificacaoFuncionario modulo="marketing">
+                <Marketing />
               </ComVerificacaoFuncionario>
             </ProtectedAppRoute>
           } />
