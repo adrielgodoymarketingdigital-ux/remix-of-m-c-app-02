@@ -67,6 +67,13 @@ const marketing = {
     enviar: "Enviar no WhatsApp",
     semLink: "Configure o link de avaliação em Marketing antes de enviar.",
   },
+  // Tela de bloqueio da página /marketing (ComVerificacaoPlano): a partir do Profissional.
+  bloqueio: {
+    titulo: "Funcionalidade exclusiva do Plano Profissional",
+    descricao: "O Marketing (avaliações no Google e as novidades que vêm por aí) está disponível a partir do plano Profissional.",
+    botaoUpgrade: "Fazer upgrade para o Profissional",
+    funcionario: "Fale com o administrador da loja para liberar o plano Profissional.",
+  },
 } as const;
 
 export default marketing;

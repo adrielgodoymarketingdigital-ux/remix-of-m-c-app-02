@@ -479,7 +479,9 @@ function AppRoutes() {
           <Route path="/marketing" element={
             <ProtectedAppRoute>
               <ComVerificacaoFuncionario modulo="marketing">
-                <Marketing />
+                <ComVerificacaoPlano modulo="marketing">
+                  <Marketing />
+                </ComVerificacaoPlano>
               </ComVerificacaoFuncionario>
             </ProtectedAppRoute>
           } />

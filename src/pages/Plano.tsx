@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { APP_BUILD_ID } from "@/lib/build";
 import { supabase } from "@/integrations/supabase/client";
+import { periodoDoHighlight } from "@/lib/marketing/upgradeProfissional";
 
 export default function Plano() {
   console.log("[Plano] Renderizando - Build:", APP_BUILD_ID);
@@ -49,7 +50,8 @@ export default function Plano() {
   // Um layout por vez: os ids plan-* e planos-disponiveis não podem existir em dobro.
   const isDesktop = useIsDesktop();
   const { isFuncionario, carregando: carregandoFuncionario } = useFuncionarioPermissoes();
-  const [periodoPlano, setPeriodoPlano] = useState<"mensal" | "anual">("mensal");
+  // Com ?highlight=<plano>_anual abre no anual, onde está o cartão a destacar.
+  const [periodoPlano, setPeriodoPlano] = useState<"mensal" | "anual">(() => periodoDoHighlight(new URLSearchParams(window.location.search).get("highlight")));
   const { assinatura, carregando, abrirPaginaPagamento, cancelarPlano, limites, recarregar, obterContagemDispositivos, periodoDispositivos, diasRestantesTrial, horasRestantesTrial, trialExpirado, migracaoNecessaria, planoVencido, planoAnterior, planoVencidoEm } = useAssinatura();
 
   // ── Plano vencido (só textos) ──
@@ -112,7 +114,7 @@ export default function Plano() {
   });
   
   // No computador, o seletor abre no período do plano atual. Só uma vez: depois quem manda é o clique.
-  // Com ?highlight= fica no mensal, onde está o cartão a destacar.
+  // Com ?highlight= fica no período do cartão a destacar (periodoDoHighlight).
   const periodoDefinido = useRef(false);
   useEffect(() => {
     if (!isDesktop || !assinatura || periodoDefinido.current) return;

@@ -7,6 +7,8 @@ import { textoRenovarPlano } from "@/lib/planoVencido";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { LIMITES_POR_PLANO } from "@/types/assinatura";
+import { useTranslation } from "react-i18next";
+import { destinoUpgradeProfissional } from "@/lib/marketing/upgradeProfissional";
 
 interface ComVerificacaoPlanoProps {
   children: ReactNode;
@@ -17,6 +19,7 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
   const { temAcessoModulo, assinatura, carregando, planoVencido, planoAnterior } = useAssinatura();
   const { isFuncionario, carregando: carregandoFuncionario, temAcessoModulo: temAcessoModuloFuncionario } = useFuncionarioPermissoes();
   const navigate = useNavigate();
+  const { t } = useTranslation("marketing");
 
   // Ainda carregando dados de assinatura — mostrar brevemente
   // Limitado a 8s pelo watchdog do useAssinatura; não bloquear indefinidamente
@@ -63,10 +66,16 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
   // Nota: temAcessoModulo já usa getLimitesFree quando assinatura é null, então o check abaixo cobre isso.
 
   // Módulos com mensagem de bloqueio personalizada
-  const BLOQUEIOS_PERSONALIZADOS: Partial<Record<typeof modulo, { titulo: string; descricao: string }>> = {
+  // botao: só quando o módulo tem um destino próprio; sem ele, "Ver Planos Disponíveis".
+  const BLOQUEIOS_PERSONALIZADOS: Partial<Record<typeof modulo, { titulo: string; descricao: string; botao?: { texto: string; destino: string } }>> = {
     precificador: {
       titulo: "Funcionalidade exclusiva do Plano Ultra",
       descricao: "O Precificador com cálculo de DIFAL e taxas de cartão está disponível apenas no Plano Ultra. Faça upgrade e tenha acesso completo a essa e outras ferramentas exclusivas.",
+    },
+    marketing: {
+      titulo: t("bloqueio.titulo"),
+      descricao: t("bloqueio.descricao"),
+      botao: { texto: t("bloqueio.botaoUpgrade"), destino: destinoUpgradeProfissional(assinatura?.plano_tipo) },
     },
   };
 
@@ -115,9 +124,9 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
                 </>
               )}
             </p>
-            <Button onClick={() => navigate("/plano")} className="w-full sm:w-auto">
+            <Button onClick={() => navigate(personalizado?.botao?.destino ?? "/plano")} className="w-full sm:w-auto">
               <Crown className="mr-2 h-4 w-4" />
-              Ver Planos Disponíveis
+              {personalizado?.botao?.texto ?? "Ver Planos Disponíveis"}
             </Button>
           </AlertDescription>
         </Alert>

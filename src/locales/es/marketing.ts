@@ -70,6 +70,12 @@ const marketing: Traducao<typeof marketingPtBR> = {
     enviar: "Enviar por WhatsApp",
     semLink: "Configure el enlace de reseñas en Marketing antes de enviar.",
   },
+  bloqueio: {
+    titulo: "Función exclusiva del Plan Profesional",
+    descricao: "Marketing (reseñas en Google y las próximas novedades) está disponible a partir del plan Profesional.",
+    botaoUpgrade: "Mejorar al plan Profesional",
+    funcionario: "Hable con el administrador de la tienda para habilitar el plan Profesional.",
+  },
 };
 
 export default marketing;
