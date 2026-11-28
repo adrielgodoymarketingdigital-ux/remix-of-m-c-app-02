@@ -264,6 +264,8 @@ const vendas: Traducao<typeof vendasPtBR> = {
     contasErroTitulo: "Venta cancelada, pero la cuenta por cobrar no se eliminó",
     contasErroDescricao: "Revise la cuenta por cobrar de esta venta en Cuentas. ({{mensagem}})",
     contasVerSegundaForma: "Revise también las cuotas de la 2.ª forma de pago.",
+    imeiNaoLiberadoTitulo: "Venta cancelada, pero el IMEI no se liberó",
+    imeiNaoLiberadoDescricao: "El stock volvió, pero el IMEI del equipo sigue marcado como vendido ({{mensagem}}). Revise el IMEI en el registro del equipo.",
     erroCancelarTitulo: "Error al cancelar la venta",
     erroCancelarDescricao: "No se pudo cancelar la venta.",
     naoConfirmouRecebimento: "No se pudo confirmar el cobro de esta venta.",

@@ -16,6 +16,8 @@ import { excluirContasPendentesDaVenda, type ResultadoContasDaVenda } from "@/li
 import { AcaoAparelhoTroca, bloqueioEditarVendaComTroca, decidirCancelamentoTroca, MENSAGEM_APARELHO_TROCA_VENDIDO, MENSAGEM_EDITAR_VENDA_COM_TROCA } from "@/lib/vendas/trocaPDV";
 import i18n from "@/lib/i18n/instancia";
 import { carregarTrocaDaVenda, marcarTrocaCancelada, tirarAparelhoDaTrocaDoEstoque } from "@/lib/vendas/cancelamentoTroca";
+import { liberarImeiDaLinha } from "@/lib/vendas/estornoEstoqueVenda";
+import { deveLiberarImei } from "@/lib/vendas/estornoEstoqueVenda.core";
 
 /** Campos de uma linha de venda que o cancelamento usa (estorno de estoque e cascata). */
 interface LinhaCancelamento {
@@ -602,6 +604,7 @@ export const useVendas = () => {
         : [{ linha: vendaOriginal, estornar: true }];
       const cascatas: ResultadoCascata[] = [];
       const contasDasLinhas: ResultadoContasDaVenda[] = [];
+      const errosImei: string[] = [];
 
       for (const { linha, estornar } of linhasACancelar) {
         // Estornar estoque se solicitado
@@ -667,6 +670,18 @@ export const useVendas = () => {
           .eq("user_id", linha.user_id);
 
         if (updateError) throw updateError;
+
+        // IMEI vendido por esta linha volta a ficar disponível — só quando o estoque
+        // foi estornado (caixa desmarcada: o aparelho segue fora e o IMEI segue vendido).
+        // Falha aqui não desfaz o cancelamento: vira aviso no fim.
+        if (deveLiberarImei({ estornarEstoque, estornar, tipo: linha.tipo })) {
+          try {
+            await liberarImeiDaLinha(linha);
+          } catch (erroImei) {
+            console.error("[cancelamento] etapa=liberar IMEI", { venda: linha.id, erro: erroImei });
+            errosImei.push(erroImei instanceof Error ? erroImei.message : String((erroImei as { message?: unknown })?.message ?? erroImei));
+          }
+        }
 
         // Conta a receber da própria linha ("venda_id:<id>"): apaga só a pendente sem
         // nenhum pagamento; recebida/paga/parcial fica e exige estorno manual (só avisa).
@@ -769,8 +784,18 @@ export const useVendas = () => {
           c.status === "bloqueado_parcela_recebida" ||
           (c.status === "cancelado" && c.parcelasRecebidasParaRevisao > 0));
         if (cascataPedeRevisao) alertasContas.push(tV("avisos.contasVerSegundaForma"));
+      }
+      // IMEI que não voltou a ficar disponível entra no mesmo aviso final.
+      if (errosImei.length > 0) {
+        alertasContas.push(tV("avisos.imeiNaoLiberadoDescricao", { mensagem: errosImei.join("; ") }));
+      }
+      if (alertasContas.length > 0) {
         toast({
-          title: errosContas.length > 0 ? tV("avisos.contasErroTitulo") : tV("avisos.contasRecebidasTitulo"),
+          title: errosContas.length > 0
+            ? tV("avisos.contasErroTitulo")
+            : contasRecebidas > 0
+              ? tV("avisos.contasRecebidasTitulo")
+              : tV("avisos.imeiNaoLiberadoTitulo"),
           description: alertasContas.join(" "),
           variant: "destructive",
           duration: 15000,

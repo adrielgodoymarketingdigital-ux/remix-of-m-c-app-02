@@ -283,6 +283,8 @@ const vendas = {
     contasErroTitulo: "Venda cancelada, mas a conta a receber não foi removida",
     contasErroDescricao: "Revise a conta a receber dessa venda em Contas. ({{mensagem}})",
     contasVerSegundaForma: "Revise também as parcelas da 2ª forma de pagamento.",
+    imeiNaoLiberadoTitulo: "Venda cancelada, mas o IMEI não foi liberado",
+    imeiNaoLiberadoDescricao: "O estoque voltou, mas o IMEI do aparelho continua marcado como vendido ({{mensagem}}). Confira o IMEI no cadastro do aparelho.",
     erroCancelarTitulo: "Erro ao cancelar venda",
     erroCancelarDescricao: "Não foi possível cancelar a venda.",
     naoConfirmouRecebimento: "Não foi possível confirmar o recebimento desta venda.",
