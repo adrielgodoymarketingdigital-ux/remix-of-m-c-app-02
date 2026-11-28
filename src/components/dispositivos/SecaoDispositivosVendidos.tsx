@@ -20,6 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { bloqueioExcluirDispositivoVendido } from "@/lib/vendas/trocaPDV";
+import { carregarLinhasDaVenda, excluirVendaDevolvendoEstoque } from "@/lib/vendas/estornoEstoqueVenda";
 import { FotoMiniaturaDispositivo } from "@/components/dispositivos/FotoMiniaturaDispositivo";
 
 interface ItemGrupoDetalhe {
@@ -406,55 +407,56 @@ export function SecaoDispositivosVendidos() {
         }
       }
 
-      // Cancelar a venda e estornar o dispositivo para o estoque
-      const { error: cancelError } = await supabase
-        .from("vendas")
-        .update({
-          cancelada: true,
-          data_cancelamento: new Date().toISOString(),
-          motivo_cancelamento: "Excluído pelo usuário via dispositivos vendidos",
-          estorno_estoque: true,
-        })
-        .eq("id", vendaParaExcluir.id);
+      // Venda inteira (todas as linhas do grupo_venda): cada linha principal volta ao
+      // estoque com a quantidade vendida e libera o IMEI; ordem e falhas em
+      // excluirVendaDevolvendoEstoqueCore (estornoEstoqueVenda.core.ts).
+      const { data: lojaOwnerId, error: erroDono } = await supabase.rpc("get_loja_owner_id");
+      if (erroDono) throw erroDono;
+      const linhas = await carregarLinhasDaVenda({
+        vendaId: vendaParaExcluir.id,
+        grupoVenda: vendaParaExcluir.grupo_venda ?? null,
+        userId: (lojaOwnerId as string | null) || userId,
+      });
+      if (linhas.length === 0) throw new Error("Venda não encontrada. Atualize a lista e tente de novo.");
 
-      if (cancelError) throw cancelError;
+      const resultado = await excluirVendaDevolvendoEstoque({
+        linhas,
+        motivo: "Excluído pelo usuário via dispositivos vendidos",
+        agoraISO: new Date().toISOString(),
+      });
 
-      // Cancelar registros secundários do mesmo grupo_venda (pagamento duplo)
-      if (vendaParaExcluir.grupo_venda) {
-        await supabase
-          .from("vendas")
-          .update({
-            cancelada: true,
-            data_cancelamento: new Date().toISOString(),
-          })
-          .eq("grupo_venda", vendaParaExcluir.grupo_venda)
-          .neq("id", vendaParaExcluir.id);
+      const voltaram = resultado.itensDevolvidos === 1
+        ? "1 item voltou ao estoque"
+        : `${resultado.itensDevolvidos} itens voltaram ao estoque`;
+      const unidades = resultado.unidadesDevolvidas !== resultado.itensDevolvidos
+        ? ` (${resultado.unidadesDevolvidas} unidades)`
+        : "";
+
+      if (resultado.status === "erro") {
+        console.error("[excluir venda] etapa=" + resultado.etapa, resultado.mensagem);
+        await carregarVendas();
+        throw new Error(
+          `Falha ao ${resultado.etapa}: ${resultado.mensagem}. ` +
+          (resultado.itensDevolvidos > 0 ? `Antes da falha, ${voltaram}${unidades}. ` : "") +
+          (resultado.etapa === "cancelar linhas do pagamento duplo" || resultado.etapa === "remover a venda da lista"
+            ? "Os itens já foram cancelados; a venda pode continuar aparecendo como cancelada na tela de Vendas."
+            : "Tente excluir de novo para concluir (o que já voltou ao estoque não volta em dobro)."),
+        );
       }
 
-      // Estornar o dispositivo para o estoque (marcar como não vendido)
-      await supabase
-        .from("dispositivos")
-        .update({ vendido: false, quantidade: 1 })
-        .eq("id", vendaParaExcluir.dispositivo_id);
-
-      // Soft delete da venda
-      const { error: deleteError } = await supabase
-        .from("vendas")
-        .update({ deleted_at: new Date().toISOString() })
-        .eq("id", vendaParaExcluir.id);
-
-      if (deleteError) throw deleteError;
-
-      // Soft delete dos registros secundários também
-      if (vendaParaExcluir.grupo_venda) {
-        await supabase
-          .from("vendas")
-          .update({ deleted_at: new Date().toISOString() })
-          .eq("grupo_venda", vendaParaExcluir.grupo_venda)
-          .neq("id", vendaParaExcluir.id);
+      // TOAST_LIMIT = 1: um aviso só, com os alertas no mesmo texto.
+      const alertas: string[] = [];
+      if (resultado.itensNaoEncontrados > 0) {
+        alertas.push(`${resultado.itensNaoEncontrados} item(ns) não existe(m) mais no estoque e não foi(ram) devolvido(s).`);
       }
-
-      toast({ title: "Venda excluída", description: "A venda foi removida e o estoque foi estornado." });
+      if (resultado.errosImei.length > 0) {
+        alertas.push(`Não foi possível liberar o IMEI (${resultado.errosImei.join("; ")}); confira o IMEI no cadastro do aparelho.`);
+      }
+      toast({
+        title: "Venda excluída",
+        description: [`A venda foi removida e ${voltaram}${unidades}.`, ...alertas].join(" "),
+        ...(alertas.length > 0 ? { variant: "destructive" as const, duration: 15000 } : {}),
+      });
       setVendaParaExcluir(null);
       await carregarVendas();
     } catch (error: any) {
@@ -715,7 +717,7 @@ export function SecaoDispositivosVendidos() {
               <ul className="list-disc list-inside mt-1 space-y-1">
                 <li>Remover a venda da lista de vendas</li>
                 <li>Estornar o lançamento no financeiro</li>
-                <li>Devolver o dispositivo ao estoque</li>
+                <li>Devolver ao estoque todos os itens da venda</li>
               </ul>
             </AlertDialogDescription>
           </AlertDialogHeader>
